@@ -94,11 +94,15 @@ app.post("/api/events/batch", (req, res) => {
 
 app.get("/api/state", (_req, res) => {
   const now = new Date();
+  const includeDormant = String(_req.query.includeDormant ?? "0") === "1";
   const state = [...entities.values()].map((entity) => ({
     ...entity,
     currentStatus: computeStatus(entity, now)
   }));
-  res.json({ entities: state });
+  const filtered = includeDormant
+    ? state
+    : state.filter((entity) => entity.currentStatus === "active" || entity.currentStatus === "idle" || entity.currentStatus === "sleepy");
+  res.json({ entities: filtered });
 });
 
 app.get("/api/events/recent", (req, res) => {

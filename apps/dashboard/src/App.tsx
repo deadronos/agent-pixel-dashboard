@@ -28,6 +28,15 @@ function getGridColumns(count: number): number {
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
 const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
 
+function statusFromTimestamp(timestamp: string): EntityStatus {
+  const ageMs = Date.now() - new Date(timestamp).getTime();
+  if (ageMs <= 10_000) return "active";
+  if (ageMs <= 30_000) return "idle";
+  if (ageMs <= 90_000) return "sleepy";
+  if (ageMs <= 300_000) return "dormant";
+  return "dormant";
+}
+
 export function App() {
   const [entities, setEntities] = useState<EntityState[]>([]);
   const [connected, setConnected] = useState(false);
@@ -81,7 +90,7 @@ export function App() {
               entityKind: eventItem.entityKind,
               sessionId: eventItem.sessionId,
               parentEntityId: eventItem.parentEntityId,
-              currentStatus: "active",
+              currentStatus: statusFromTimestamp(eventItem.timestamp),
               lastEventAt: eventItem.timestamp,
               lastSummary: eventItem.summary ?? prev?.lastSummary,
               activityScore: eventItem.activityScore ?? prev?.activityScore ?? 0.5,

@@ -7,7 +7,11 @@
     "paths": {
       "@agent-watch/event-schema": ["packages/event-schema/src/index.ts"],
       "@agent-watch/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
-      "@agent-watch/plugin-codex-watch": ["plugins/plugin-codex-watch/src/index.ts"]
+      "@agent-watch/plugin-codex-watch": ["plugins/plugin-codex-watch/src/index.ts"],
+      "@agent-watch/plugin-claude-watch": ["plugins/plugin-claude-watch/src/index.ts"],
+      "@agent-watch/plugin-gemini-watch": ["plugins/plugin-gemini-watch/src/index.ts"],
+      "@agent-watch/plugin-openclaw-watch": ["plugins/plugin-openclaw-watch/src/index.ts"],
+      "@agent-watch/plugin-copilot-watch": ["plugins/plugin-copilot-watch/src/index.ts"]
     },
     "strict": true,
     "esModuleInterop": true,

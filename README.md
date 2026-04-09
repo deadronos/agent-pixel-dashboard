@@ -6,6 +6,10 @@ Watcher-first multi-agent observability stack from `idea.md`:
 - `apps/hub`: receives event batches, projects entity state, streams updates over WebSocket
 - `apps/dashboard`: renders live entity tiles with activity-state decay
 - `plugins/plugin-codex-watch`: codex-oriented JSONL watcher plugin
+- `plugins/plugin-claude-watch`: claude session/transcript watcher plugin
+- `plugins/plugin-gemini-watch`: gemini-cli session/transcript watcher plugin
+- `plugins/plugin-openclaw-watch`: openclaw session/transcript watcher plugin
+- `plugins/plugin-copilot-watch`: copilot-cli session/transcript watcher plugin
 - optional CASS-backed session search at `GET /api/search/sessions`
 
 ## Quick start
@@ -44,7 +48,14 @@ Open `http://localhost:5173`.
 - `HUB_URL` (default: `http://localhost:3030`)
 - `HUB_AUTH_TOKEN` (must match hub token)
 - `FLUSH_INTERVAL_MS` (default: `500`)
+- `MAX_BATCH_BYTES` (default: `1500000`, keep below hub JSON body limit)
+- `WATCH_SOURCES` (default: `auto`; use `auto|all` or comma-separated sources)
+- `PLUGINS_DIR` (optional; defaults to repo `plugins/` directory for autodiscovery)
 - `CODEX_SESSION_ROOTS` (comma-separated session roots)
+- `CLAUDE_SESSION_ROOTS` (comma-separated session roots)
+- `GEMINI_SESSION_ROOTS` (comma-separated session roots)
+- `OPENCLAW_SESSION_ROOTS` (comma-separated session roots)
+- `COPILOT_SESSION_ROOTS` (comma-separated session roots)
 
 ## CASS integration
 

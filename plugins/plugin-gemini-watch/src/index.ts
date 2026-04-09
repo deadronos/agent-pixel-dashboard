@@ -11,7 +11,7 @@ import type {
   WatchHandle
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.codex/sessions", "~/.codex/transcripts"];
+const DEFAULT_PATHS = ["~/.gemini", "~/.gemini/sessions", "~/.gemini/transcripts", "~/.config/gemini-cli"];
 
 function expandHome(input: string): string {
   if (!input.startsWith("~")) {
@@ -34,12 +34,14 @@ function parseRecord(
   const sessionId =
     getString(record.session_id) ||
     getString(record.sessionId) ||
+    getString(record.conversation_id) ||
     path.basename(path.dirname(filePath));
-  const entityId = `codex:session:${sessionId}`;
+  const entityId = `gemini:session:${sessionId}`;
 
   const timestamp =
     getString(record.timestamp) ||
     getString(record.created_at) ||
+    getString(record.createdAt) ||
     fallbackTimestamp;
 
   const eventType =
@@ -50,18 +52,20 @@ function parseRecord(
   const summary =
     getString(record.summary) ||
     getString(record.message) ||
-    getString(record.text);
+    getString(record.text) ||
+    getString(record.content);
 
   const detail =
     getString(record.detail) ||
-    getString(record.content);
+    getString(record.content) ||
+    getString(record.raw);
 
   const rawActivity = typeof record.activityScore === "number" ? record.activityScore : undefined;
   const activityScore = rawActivity ?? (eventType.startsWith("tool") ? 0.85 : 0.6);
 
   const event = {
     eventId: makeDeterministicEventId({
-      source: "codex",
+      source: "gemini",
       entityId,
       timestamp,
       eventType,
@@ -69,16 +73,16 @@ function parseRecord(
       detail: detail || summary
     }),
     timestamp,
-    source: "codex",
+    source: "gemini",
     sourceHost,
     entityId,
     sessionId,
     parentEntityId: null,
     entityKind: "session" as const,
-    displayName: "Codex",
+    displayName: "Gemini",
     eventType,
     status: getString(record.status, "active"),
-    summary: summary || "Codex activity",
+    summary: summary || "Gemini activity",
     detail: detail || undefined,
     activityScore: Math.max(0, Math.min(1, activityScore)),
     sequence,
@@ -92,19 +96,18 @@ function parseRecord(
   return parseNormalizedEvent(event);
 }
 
-export class CodexWatchPlugin implements CollectorPlugin {
-  id = "plugin-codex-watch";
-  source = "codex";
+export class GeminiWatchPlugin implements CollectorPlugin {
+  id = "plugin-gemini-watch";
+  source = "gemini";
 
   async discover(config: PluginContext): Promise<DiscoveredSessionRoot[]> {
-    const envRoots = (config.env.CODEX_SESSION_ROOTS ?? "")
+    const envRoots = (config.env.GEMINI_SESSION_ROOTS ?? "")
       .split(",")
       .map((value: string) => value.trim())
       .filter(Boolean);
 
     const configured = config.configuredRoots.length > 0 ? config.configuredRoots : [...envRoots, ...DEFAULT_PATHS];
     const roots = configured.map(expandHome);
-
     const discovered: DiscoveredSessionRoot[] = [];
 
     await Promise.all(
@@ -114,13 +117,9 @@ export class CodexWatchPlugin implements CollectorPlugin {
           if (!stat.isDirectory()) {
             return;
           }
-          discovered.push({
-            id: `codex-root-${index}`,
-            path: rootPath,
-            host: config.host
-          });
+          discovered.push({ id: `gemini-root-${index}`, path: rootPath, host: config.host });
         } catch {
-          // Ignore missing roots.
+          // ignore missing roots
         }
       })
     );
@@ -222,5 +221,5 @@ export class CodexWatchPlugin implements CollectorPlugin {
 }
 
 export default function createPlugin(): CollectorPlugin {
-  return new CodexWatchPlugin();
+  return new GeminiWatchPlugin();
 }

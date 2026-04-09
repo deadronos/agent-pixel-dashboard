@@ -1,11 +1,16 @@
 import { setInterval } from "node:timers";
 import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
-import type { CollectorPlugin, WatchHandle } from "@agent-watch/plugin-sdk";
-import createCodexPlugin from "@agent-watch/plugin-codex-watch";
+import type { WatchHandle } from "@agent-watch/plugin-sdk";
+import { buildSizedBatches } from "./batching.js";
 import { loadConfig } from "./config.js";
+import {
+  discoverPluginSources,
+  getDefaultPluginsDir,
+  loadPluginsFromSources,
+  resolveRequestedSources
+} from "./plugin-loader.js";
 
 const config = loadConfig(process.env);
-const plugin: CollectorPlugin = createCodexPlugin();
 
 const queue: NormalizedEvent[] = [];
 const handles: WatchHandle[] = [];
@@ -15,53 +20,80 @@ async function flushQueue(): Promise<void> {
     return;
   }
   const payload = queue.splice(0, queue.length);
-
-  const response = await fetch(`${config.hubUrl}/api/events/batch`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${config.hubToken}`
-    },
-    body: JSON.stringify({
-      collectorId: config.collectorId,
-      events: payload
-    })
+  const bodies = buildSizedBatches(payload, {
+    collectorId: config.collectorId,
+    maxBytes: config.maxBatchBytes
   });
 
-  if (!response.ok) {
-    throw new Error(`hub rejected batch: ${response.status} ${response.statusText}`);
+  try {
+    for (const body of bodies) {
+      const response = await fetch(`${config.hubUrl}/api/events/batch`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${config.hubToken}`
+        },
+        body
+      });
+
+      if (!response.ok) {
+        throw new Error(`hub rejected batch: ${response.status} ${response.statusText}`);
+      }
+    }
+  } catch (error) {
+    queue.unshift(...payload);
+    throw error;
   }
 }
 
 async function main(): Promise<void> {
-  const roots = await plugin.discover({
-    host: config.hostName,
-    configuredRoots: config.codexRoots,
-    env: process.env
-  });
+  const pluginDir = config.pluginsDir || getDefaultPluginsDir();
+  const discoveredSources = await discoverPluginSources(pluginDir);
+  const selectedSources = resolveRequestedSources(config.watchSources, discoveredSources);
+  const selectedPlugins = await loadPluginsFromSources(selectedSources);
 
-  if (roots.length === 0) {
+  if (selectedPlugins.length === 0) {
     // eslint-disable-next-line no-console
-    console.log("collector found no codex roots; set CODEX_SESSION_ROOTS to override");
+    console.log(
+      `collector found no plugins to load (WATCH_SOURCES=${config.watchSources.join(", ")} discovered=${discoveredSources.join(", ")})`
+    );
+    return;
   }
 
-  for (const root of roots) {
-    const handle = await plugin.watch(root, {
-      onEvent: (event: NormalizedEvent) => {
-        try {
-          queue.push(parseNormalizedEvent(event));
-        } catch {
-          // keep queue robust
-        }
-      },
-      onError: (error: Error) => {
-        // eslint-disable-next-line no-console
-        console.error(`watch error [${root.path}]`, error.message);
-      }
+  for (const plugin of selectedPlugins) {
+    const roots = await plugin.discover({
+      host: config.hostName,
+      configuredRoots: plugin.source === "codex" ? config.codexRoots : [],
+      env: process.env
     });
-    handles.push(handle);
+
+    if (roots.length === 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[${plugin.source}] no roots discovered (set ${plugin.source.toUpperCase()}_SESSION_ROOTS to override)`);
+      continue;
+    }
+
+    for (const root of roots) {
+      const handle = await plugin.watch(root, {
+        onEvent: (event: NormalizedEvent) => {
+          try {
+            queue.push(parseNormalizedEvent(event));
+          } catch {
+            // keep queue robust
+          }
+        },
+        onError: (error: Error) => {
+          // eslint-disable-next-line no-console
+          console.error(`[${plugin.source}] watch error [${root.path}]`, error.message);
+        }
+      });
+      handles.push(handle);
+      // eslint-disable-next-line no-console
+      console.log(`[${plugin.source}] watching ${root.path}`);
+    }
+
     // eslint-disable-next-line no-console
-    console.log(`watching ${root.path}`);
+    console.log(`[${plugin.source}] watching ${roots.length} root(s)`);
   }
 
   const timer = setInterval(() => {
