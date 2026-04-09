@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { watch } from "chokidar";
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
+import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -11,7 +12,8 @@ import type {
   WatchHandle
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.copilot", "~/.copilot/sessions", "~/.copilot/transcripts", "~/.config/github-copilot"];
+const DEFAULT_PATHS = ["~/.copilot/session-state", "~/.copilot"];
+const SOURCE: SessionSource = "copilot";
 
 function expandHome(input: string): string {
   if (!input.startsWith("~")) {
@@ -31,10 +33,13 @@ function parseRecord(
   sequence: number,
   fallbackTimestamp: string
 ): NormalizedEvent {
+  const data =
+    record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : undefined;
   const sessionId =
     getString(record.session_id) ||
     getString(record.sessionId) ||
     getString(record.conversation_id) ||
+    getString(data?.sessionId) ||
     path.basename(path.dirname(filePath));
   const entityId = `copilot:session:${sessionId}`;
 
@@ -50,12 +55,14 @@ function parseRecord(
     "message";
 
   const summary =
+    getString(data?.content) ||
     getString(record.summary) ||
     getString(record.message) ||
     getString(record.text) ||
     getString(record.content);
 
   const detail =
+    getString(data?.selectedModel) ||
     getString(record.detail) ||
     getString(record.content) ||
     getString(record.raw);
@@ -89,7 +96,8 @@ function parseRecord(
     meta: {
       filePath,
       toolName: getString(record.toolName) || getString(record.tool_name),
-      rawType: getString(record.type)
+      rawType: getString(record.type),
+      model: getString(data?.selectedModel) || undefined
     }
   };
 
@@ -128,20 +136,19 @@ export class CopilotWatchPlugin implements CollectorPlugin {
   }
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
-    const watcherStartedAt = Date.now();
+    const activeWindowMs = Number(process.env.COPILOT_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
     const offsets = new Map<string, number>();
     const sequences = new Map<string, number>();
 
     const ingestFile = async (filePath: string, reason: "add" | "change"): Promise<void> => {
-      if (!filePath.endsWith(".jsonl")) {
+      if (!matchesSessionFile(SOURCE, filePath)) {
         return;
       }
 
       try {
         const stat = await fs.stat(filePath);
         if (!offsets.has(filePath) && reason === "add") {
-          const recentlyCreated = stat.mtimeMs >= watcherStartedAt - 3_000;
-          if (!recentlyCreated) {
+          if (!isActiveSessionFile(stat.mtimeMs, Date.now(), activeWindowMs)) {
             offsets.set(filePath, stat.size);
             return;
           }

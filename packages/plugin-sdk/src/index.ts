@@ -33,3 +33,5 @@ export interface CollectorPlugin {
   discover(config: PluginContext): Promise<DiscoveredSessionRoot[]>;
   watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle>;
 }
+
+export { isActiveSessionFile, matchesSessionFile, type SessionSource } from "./session-detection.js";

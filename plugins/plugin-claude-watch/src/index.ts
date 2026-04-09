@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { watch } from "chokidar";
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
+import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -11,7 +12,8 @@ import type {
   WatchHandle
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.claude", "~/.claude/projects", "~/.claude/sessions", "~/.claude/transcripts"];
+const DEFAULT_PATHS = ["~/.claude/projects", "~/.claude"];
+const SOURCE: SessionSource = "claude";
 
 function expandHome(input: string): string {
   if (!input.startsWith("~")) {
@@ -35,7 +37,7 @@ function parseRecord(
     getString(record.session_id) ||
     getString(record.sessionId) ||
     getString(record.conversation_id) ||
-    path.basename(path.dirname(filePath));
+    path.basename(filePath).replace(/\.jsonl$/, "");
   const entityId = `claude:session:${sessionId}`;
 
   const timestamp =
@@ -128,20 +130,19 @@ export class ClaudeWatchPlugin implements CollectorPlugin {
   }
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
-    const watcherStartedAt = Date.now();
+    const activeWindowMs = Number(process.env.CLAUDE_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
     const offsets = new Map<string, number>();
     const sequences = new Map<string, number>();
 
     const ingestFile = async (filePath: string, reason: "add" | "change"): Promise<void> => {
-      if (!filePath.endsWith(".jsonl")) {
+      if (!matchesSessionFile(SOURCE, filePath)) {
         return;
       }
 
       try {
         const stat = await fs.stat(filePath);
         if (!offsets.has(filePath) && reason === "add") {
-          const recentlyCreated = stat.mtimeMs >= watcherStartedAt - 3_000;
-          if (!recentlyCreated) {
+          if (!isActiveSessionFile(stat.mtimeMs, Date.now(), activeWindowMs)) {
             offsets.set(filePath, stat.size);
             return;
           }

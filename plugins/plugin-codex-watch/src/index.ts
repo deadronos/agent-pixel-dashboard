@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { watch } from "chokidar";
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
+import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -11,7 +12,8 @@ import type {
   WatchHandle
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.codex/sessions", "~/.codex/transcripts"];
+const DEFAULT_PATHS = ["~/.codex/sessions", "~/.codex"];
+const SOURCE: SessionSource = "codex";
 
 function expandHome(input: string): string {
   if (!input.startsWith("~")) {
@@ -31,10 +33,13 @@ function parseRecord(
   sequence: number,
   fallbackTimestamp: string
 ): NormalizedEvent {
+  const payload =
+    record.payload && typeof record.payload === "object" ? (record.payload as Record<string, unknown>) : undefined;
   const sessionId =
     getString(record.session_id) ||
     getString(record.sessionId) ||
-    path.basename(path.dirname(filePath));
+    getString(payload?.id) ||
+    path.basename(filePath).replace(/^rollout-/, "").replace(/\.jsonl$/, "");
   const entityId = `codex:session:${sessionId}`;
 
   const timestamp =
@@ -45,14 +50,18 @@ function parseRecord(
   const eventType =
     getString(record.event_type) ||
     getString(record.type) ||
+    getString(payload?.type) ||
     "message";
 
   const summary =
+    getString(payload?.name) ||
+    getString(payload?.command) ||
     getString(record.summary) ||
     getString(record.message) ||
     getString(record.text);
 
   const detail =
+    getString(payload?.arguments) ||
     getString(record.detail) ||
     getString(record.content);
 
@@ -84,8 +93,9 @@ function parseRecord(
     sequence,
     meta: {
       filePath,
-      toolName: getString(record.toolName) || getString(record.tool_name),
-      rawType: getString(record.type)
+      toolName: getString(payload?.name) || getString(record.toolName) || getString(record.tool_name),
+      rawType: getString(record.type),
+      model: getString(payload?.model) || undefined
     }
   };
 
@@ -129,20 +139,19 @@ export class CodexWatchPlugin implements CollectorPlugin {
   }
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
-    const watcherStartedAt = Date.now();
+    const activeWindowMs = Number(process.env.CODEX_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
     const offsets = new Map<string, number>();
     const sequences = new Map<string, number>();
 
     const ingestFile = async (filePath: string, reason: "add" | "change"): Promise<void> => {
-      if (!filePath.endsWith(".jsonl")) {
+      if (!matchesSessionFile(SOURCE, filePath)) {
         return;
       }
 
       try {
         const stat = await fs.stat(filePath);
         if (!offsets.has(filePath) && reason === "add") {
-          const recentlyCreated = stat.mtimeMs >= watcherStartedAt - 3_000;
-          if (!recentlyCreated) {
+          if (!isActiveSessionFile(stat.mtimeMs, Date.now(), activeWindowMs)) {
             offsets.set(filePath, stat.size);
             return;
           }

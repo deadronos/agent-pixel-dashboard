@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { watch } from "chokidar";
+import { setInterval } from "node:timers";
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
+import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -10,8 +11,13 @@ import type {
   WatchContext,
   WatchHandle
 } from "@agent-watch/plugin-sdk";
+import { collectJsonlFiles } from "./polling.js";
 
-const DEFAULT_PATHS = ["~/.openclaw", "~/.openclaw/sessions", "~/.openclaw/transcripts", "~/.openclaw/state"];
+const DEFAULT_PATHS = ["~/.openclaw/agents", "~/.openclaw"];
+const DEFAULT_SCAN_INTERVAL_MS = 2000;
+const DEFAULT_MAX_DEPTH = 8;
+const DEFAULT_MAX_FILES = 5000;
+const SOURCE: SessionSource = "openclaw";
 
 function expandHome(input: string): string {
   if (!input.startsWith("~")) {
@@ -31,11 +37,14 @@ function parseRecord(
   sequence: number,
   fallbackTimestamp: string
 ): NormalizedEvent {
+  const message =
+    record.message && typeof record.message === "object" ? (record.message as Record<string, unknown>) : undefined;
   const sessionId =
     getString(record.session_id) ||
     getString(record.sessionId) ||
     getString(record.conversation_id) ||
-    path.basename(path.dirname(filePath));
+    getString(record.id) ||
+    path.basename(filePath).replace(/\.jsonl$/, "");
   const entityId = `openclaw:session:${sessionId}`;
 
   const timestamp =
@@ -50,12 +59,14 @@ function parseRecord(
     "message";
 
   const summary =
+    getString(message?.role) ||
     getString(record.summary) ||
     getString(record.message) ||
     getString(record.text) ||
     getString(record.content);
 
   const detail =
+    getString(message?.model) ||
     getString(record.detail) ||
     getString(record.content) ||
     getString(record.raw);
@@ -88,7 +99,7 @@ function parseRecord(
     sequence,
     meta: {
       filePath,
-      toolName: getString(record.toolName) || getString(record.tool_name),
+      toolName: getString(record.toolName) || getString(record.tool_name) || getString(message?.name),
       rawType: getString(record.type)
     }
   };
@@ -128,24 +139,22 @@ export class OpenClawWatchPlugin implements CollectorPlugin {
   }
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
-    const watcherStartedAt = Date.now();
     const offsets = new Map<string, number>();
     const sequences = new Map<string, number>();
+    const mtimes = new Map<string, number>();
+    const activeWindowMs = Number(process.env.OPENCLAW_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
+    const scanIntervalMs = Number(process.env.OPENCLAW_SCAN_INTERVAL_MS ?? DEFAULT_SCAN_INTERVAL_MS);
+    const maxDepth = Number(process.env.OPENCLAW_SCAN_MAX_DEPTH ?? DEFAULT_MAX_DEPTH);
+    const maxFiles = Number(process.env.OPENCLAW_SCAN_MAX_FILES ?? DEFAULT_MAX_FILES);
+    let closed = false;
+    let scanning = false;
 
-    const ingestFile = async (filePath: string, reason: "add" | "change"): Promise<void> => {
+    const ingestFile = async (filePath: string, stat: { size: number; mtime: Date }): Promise<void> => {
       if (!filePath.endsWith(".jsonl")) {
         return;
       }
 
       try {
-        const stat = await fs.stat(filePath);
-        if (!offsets.has(filePath) && reason === "add") {
-          const recentlyCreated = stat.mtimeMs >= watcherStartedAt - 3_000;
-          if (!recentlyCreated) {
-            offsets.set(filePath, stat.size);
-            return;
-          }
-        }
         const previousOffset = offsets.get(filePath) ?? 0;
         const nextOffset = stat.size < previousOffset ? 0 : previousOffset;
 
@@ -190,31 +199,75 @@ export class OpenClawWatchPlugin implements CollectorPlugin {
       }
     };
 
-    const watcher = watch(root.path, {
-      persistent: true,
-      ignoreInitial: false,
-      depth: 6,
-      awaitWriteFinish: {
-        stabilityThreshold: 120,
-        pollInterval: 40
+    const scan = async (): Promise<void> => {
+      if (closed || scanning) {
+        return;
       }
-    });
+      scanning = true;
+      try {
+        const files = await collectJsonlFiles(root.path, {
+          maxDepth: Number.isFinite(maxDepth) ? maxDepth : DEFAULT_MAX_DEPTH,
+          maxFiles: Number.isFinite(maxFiles) ? maxFiles : DEFAULT_MAX_FILES
+        });
+        const live = new Set(files);
 
-    watcher.on("add", (filePath) => {
-      void ingestFile(filePath, "add");
-    });
+        for (const filePath of files) {
+          if (!matchesSessionFile(SOURCE, filePath)) {
+            continue;
+          }
+          let stat;
+          try {
+            stat = await fs.stat(filePath);
+          } catch {
+            continue;
+          }
 
-    watcher.on("change", (filePath) => {
-      void ingestFile(filePath, "change");
-    });
+          const previousMtime = mtimes.get(filePath);
+          const previousOffset = offsets.get(filePath);
+          if (previousMtime === undefined) {
+            // Initial seed avoids replaying old history when starting watcher.
+            mtimes.set(filePath, stat.mtimeMs);
+            offsets.set(filePath, stat.size);
+            continue;
+          }
 
-    watcher.on("error", (error) => {
-      ctx.onError(error as Error);
-    });
+          if (!isActiveSessionFile(stat.mtimeMs, Date.now(), activeWindowMs)) {
+            mtimes.set(filePath, stat.mtimeMs);
+            offsets.set(filePath, stat.size);
+            continue;
+          }
+
+          if (stat.size === previousOffset && stat.mtimeMs <= previousMtime) {
+            continue;
+          }
+
+          await ingestFile(filePath, { size: stat.size, mtime: stat.mtime });
+          mtimes.set(filePath, stat.mtimeMs);
+        }
+
+        for (const key of [...mtimes.keys()]) {
+          if (!live.has(key)) {
+            mtimes.delete(key);
+            offsets.delete(key);
+            sequences.delete(key);
+          }
+        }
+      } catch (error) {
+        ctx.onError(error as Error);
+      } finally {
+        scanning = false;
+      }
+    };
+
+    await scan();
+    const timer = setInterval(() => {
+      void scan();
+    }, Number.isFinite(scanIntervalMs) ? scanIntervalMs : DEFAULT_SCAN_INTERVAL_MS);
 
     return {
       close: async () => {
-        await watcher.close();
+        closed = true;
+        clearInterval(timer);
       }
     };
   }
