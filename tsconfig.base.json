@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "@agent-watch/event-schema": ["packages/event-schema/src/index.ts"],
+      "@agent-watch/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
+      "@agent-watch/plugin-codex-watch": ["plugins/plugin-codex-watch/src/index.ts"]
+    },
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "dist"
+  }
+}

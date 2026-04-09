@@ -1,0 +1,23 @@
+{
+  "name": "agent-watch",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "build": "npm run --workspaces build",
+    "test": "npm run --workspaces test",
+    "lint": "npm run --workspaces lint",
+    "dev:hub": "npm --workspace @agent-watch/hub run dev",
+    "dev:collector": "npm --workspace @agent-watch/collector run dev",
+    "dev:dashboard": "npm --workspace @agent-watch/dashboard run dev"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}
