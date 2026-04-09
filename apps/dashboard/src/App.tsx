@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-
-type EntityStatus = "active" | "idle" | "sleepy" | "dormant" | "done" | "error";
+import { AgentFaceCard } from "./AgentFaceCard.js";
+import { getStatusFromTimestamp, type EntityStatus } from "./face.js";
 
 interface EntityState {
   entityId: string;
@@ -28,13 +28,11 @@ function getGridColumns(count: number): number {
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
 const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
 
-function statusFromTimestamp(timestamp: string): EntityStatus {
-  const ageMs = Date.now() - new Date(timestamp).getTime();
-  if (ageMs <= 10_000) return "active";
-  if (ageMs <= 30_000) return "idle";
-  if (ageMs <= 90_000) return "sleepy";
-  if (ageMs <= 300_000) return "dormant";
-  return "dormant";
+function normalizeEntity(entity: EntityState): EntityState {
+  return {
+    ...entity,
+    currentStatus: getStatusFromTimestamp(entity.lastEventAt)
+  };
 }
 
 export function App() {
@@ -45,7 +43,7 @@ export function App() {
     fetch(`${HUB_HTTP}/api/state`)
       .then((res) => res.json())
       .then((data) => {
-        setEntities((data.entities ?? []) as EntityState[]);
+        setEntities(((data.entities ?? []) as EntityState[]).map(normalizeEntity));
       })
       .catch(() => {
         // no-op for initial load
@@ -90,7 +88,7 @@ export function App() {
               entityKind: eventItem.entityKind,
               sessionId: eventItem.sessionId,
               parentEntityId: eventItem.parentEntityId,
-              currentStatus: statusFromTimestamp(eventItem.timestamp),
+              currentStatus: getStatusFromTimestamp(eventItem.timestamp),
               lastEventAt: eventItem.timestamp,
               lastSummary: eventItem.summary ?? prev?.lastSummary,
               activityScore: eventItem.activityScore ?? prev?.activityScore ?? 0.5,
@@ -109,6 +107,16 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setEntities((previous) => previous.map(normalizeEntity));
+    }, 5_000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const sorted = useMemo(() => {
     return [...entities].sort((left, right) => right.activityScore - left.activityScore);
   }, [entities]);
@@ -117,22 +125,15 @@ export function App() {
   return (
     <main className="dashboard">
       <header className="topbar">
-        <h1>Agent Watch</h1>
+        <div>
+          <p className="eyebrow">Live session mural</p>
+          <h1>Agent Watch</h1>
+        </div>
         <div className={`badge ${connected ? "ok" : "warn"}`}>{connected ? "Live" : "Disconnected"}</div>
       </header>
-      <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+      <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
         {sorted.map((entity) => (
-          <article key={entity.entityId} className={`tile ${entity.currentStatus}`}>
-            <div className="tile-header">
-              <h2>{entity.displayName}</h2>
-              <span>{entity.currentStatus}</span>
-            </div>
-            <p>{entity.lastSummary ?? "No summary yet"}</p>
-            <div className="meta">
-              <span>{entity.source}</span>
-              <span>{entity.sourceHost}</span>
-            </div>
-          </article>
+          <AgentFaceCard key={entity.entityId} entity={entity} />
         ))}
         {sorted.length === 0 ? <p className="empty">No active entities yet. Start the collector to stream events.</p> : null}
       </section>
