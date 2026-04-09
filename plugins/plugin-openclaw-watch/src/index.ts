@@ -11,6 +11,7 @@ import type {
   WatchContext,
   WatchHandle
 } from "@agent-watch/plugin-sdk";
+import { buildOpenClawSessionId, getOpenClawAgentId } from "./identity.js";
 import { collectJsonlFiles } from "./polling.js";
 
 const DEFAULT_PATHS = ["~/.openclaw/agents", "~/.openclaw"];
@@ -39,12 +40,8 @@ function parseRecord(
 ): NormalizedEvent {
   const message =
     record.message && typeof record.message === "object" ? (record.message as Record<string, unknown>) : undefined;
-  const sessionId =
-    getString(record.session_id) ||
-    getString(record.sessionId) ||
-    getString(record.conversation_id) ||
-    getString(record.id) ||
-    path.basename(filePath).replace(/\.jsonl$/, "");
+  const agentId = getOpenClawAgentId(filePath);
+  const sessionId = buildOpenClawSessionId(agentId, filePath, record);
   const entityId = `openclaw:session:${sessionId}`;
 
   const timestamp =
@@ -90,7 +87,7 @@ function parseRecord(
     sessionId,
     parentEntityId: null,
     entityKind: "session" as const,
-    displayName: "OpenClaw",
+    displayName: agentId || "OpenClaw",
     eventType,
     status: getString(record.status, "active"),
     summary: summary || "OpenClaw activity",
@@ -99,6 +96,7 @@ function parseRecord(
     sequence,
     meta: {
       filePath,
+      agentId: agentId || undefined,
       toolName: getString(record.toolName) || getString(record.tool_name) || getString(message?.name),
       rawType: getString(record.type)
     }
