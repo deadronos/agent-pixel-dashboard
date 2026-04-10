@@ -7,7 +7,7 @@ import {
   getEmptyStateMessage,
   getFilterOptions,
   getGridColumns,
-  getVisibleEntities,
+  getVisibleEntityGroups,
   pruneViewerPreferencesToLiveOptions
 } from "./dashboard-view.js";
 import { resolveLiveStatus, type DashboardEntity } from "./face.js";
@@ -121,9 +121,9 @@ export function App() {
     };
   }, []);
 
-  const visibleEntities = useMemo(() => getVisibleEntities(entities, settings), [entities, settings]);
-  const columns = getGridColumns(visibleEntities.length, settings.layout.density);
-  const emptyMessage = getEmptyStateMessage(entities.length, visibleEntities.length);
+  const visibleGroups = useMemo(() => getVisibleEntityGroups(entities, settings), [entities, settings]);
+  const columns = getGridColumns(visibleGroups.length, settings.layout.density);
+  const emptyMessage = getEmptyStateMessage(entities.length, visibleGroups.length);
 
   return (
     <main
@@ -159,15 +159,16 @@ export function App() {
         ) : null}
 
         <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
-          {visibleEntities.map((entity) => (
+          {visibleGroups.map((group) => (
             <AgentFaceCard
-              key={entity.entityId}
-              entity={entity}
+              key={group.groupId}
+              entity={group.representative}
+              groupCount={group.memberCount}
               theme={settings.theme}
               visualRules={settings.visualRules}
             />
           ))}
-          {visibleEntities.length === 0 ? (
+          {visibleGroups.length === 0 ? (
             <p className={`empty ${entities.length > 0 ? "empty--filtered" : ""}`}>{emptyMessage}</p>
           ) : null}
         </section>

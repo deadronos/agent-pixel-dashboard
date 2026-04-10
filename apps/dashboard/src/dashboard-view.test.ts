@@ -8,6 +8,7 @@ import {
   getEmptyStateMessage,
   getFilterOptions,
   getGridColumns,
+  getVisibleEntityGroups,
   getVisibleEntities,
   pruneViewerPreferencesToLiveOptions
 } from "./dashboard-view.js";
@@ -137,6 +138,85 @@ describe("getVisibleEntities", () => {
   });
 });
 
+describe("getVisibleEntityGroups", () => {
+  it("collapses multiple events from the same session into one card", () => {
+    const result = getVisibleEntityGroups(
+      [
+        {
+          entityId: "tool-1",
+          sessionId: "session-a",
+          source: "codex",
+          entityKind: "tool-run",
+          currentStatus: "active",
+          lastEventAt: "2026-04-10T10:00:00.000Z",
+          activityScore: 0.4
+        },
+        {
+          entityId: "turn-1",
+          sessionId: "session-a",
+          source: "codex",
+          entityKind: "session",
+          currentStatus: "idle",
+          lastEventAt: "2026-04-10T10:05:00.000Z",
+          activityScore: 0.8
+        },
+        {
+          entityId: "session-b",
+          source: "claude",
+          entityKind: "session",
+          currentStatus: "active",
+          lastEventAt: "2026-04-10T10:03:00.000Z",
+          activityScore: 0.7
+        }
+      ],
+      recentSettings
+    );
+
+    expect(result.map((group) => group.groupId)).toEqual(["codex|session-a", "claude|session-b"]);
+    expect(result[0].memberCount).toBe(2);
+    expect(result[0].representative.entityId).toBe("turn-1");
+  });
+
+  it("keeps a group visible when any member matches the entity-kind filter", () => {
+    const result = getVisibleEntityGroups(
+      [
+        {
+          entityId: "tool-1",
+          sessionId: "session-a",
+          source: "codex",
+          entityKind: "tool-run",
+          currentStatus: "active",
+          lastEventAt: "2026-04-10T10:00:00.000Z",
+          activityScore: 0.4
+        },
+        {
+          entityId: "turn-1",
+          sessionId: "session-a",
+          source: "codex",
+          entityKind: "session",
+          currentStatus: "idle",
+          lastEventAt: "2026-04-10T10:05:00.000Z",
+          activityScore: 0.8
+        }
+      ],
+      {
+        layout: { maxAgentsShown: 3, density: "comfortable", sortMode: "recent" },
+        filters: {
+          hideDormant: false,
+          hideDone: false,
+          visibleSources: ["codex"],
+          visibleEntityKinds: ["session"],
+          sourceFilterActive: true,
+          entityKindFilterActive: true
+        }
+      } satisfies Pick<ResolvedSettings, "layout" | "filters">
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].representative.entityKind).toBe("session");
+  });
+});
+
 describe("getGridColumns", () => {
   it("caps compact layouts at more columns than comfortable layouts", () => {
     expect(getGridColumns(6, "comfortable")).toBe(3);
@@ -179,7 +259,7 @@ describe("dashboard view helpers", () => {
 
   it("returns a filter-specific empty-state message when live data exists", () => {
     expect(getEmptyStateMessage(3, 0)).toBe(
-      "No entities match the current filters. Reset your overrides or widen the filters."
+      "No conversations match the current filters. Reset your overrides or widen the filters."
     );
   });
 

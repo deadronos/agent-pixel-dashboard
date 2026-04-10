@@ -352,6 +352,15 @@ body {
   text-align: right;
 }
 
+.face-card__count {
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  opacity: 0.78;
+}
+
 .empty {
   margin: 1rem 0;
   padding: 1rem 1.1rem;

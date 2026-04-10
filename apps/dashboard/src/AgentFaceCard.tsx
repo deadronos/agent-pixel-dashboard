@@ -133,10 +133,12 @@ function drawPixelFace(
 
 export function AgentFaceCard({
   entity,
+  groupCount,
   theme,
   visualRules
 }: {
   entity: DashboardEntity;
+  groupCount: number;
   theme: ThemePreset;
   visualRules: VisualRule[];
 }) {
@@ -189,7 +191,10 @@ export function AgentFaceCard({
     >
       <div className="face-card__meta face-card__meta--top">
         <span className="face-card__name">{entity.displayName}</span>
-        <span className="face-card__status">{getStatusLabel(entity.currentStatus)}</span>
+        <span className="face-card__status">
+          {getStatusLabel(entity.currentStatus)}
+          {groupCount > 1 ? <span className="face-card__count">{groupCount} linked</span> : null}
+        </span>
       </div>
       <div className="face-card__canvas-wrap">
         <canvas ref={canvasRef} className="face-card__canvas" />
