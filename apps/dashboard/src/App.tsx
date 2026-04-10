@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgentFaceCard } from "./AgentFaceCard.js";
+import { dashboardConfig } from "./dashboard-config.js";
+import { createResolvedSettings } from "./dashboard-settings.js";
+import { getGridColumns, getVisibleEntities } from "./dashboard-view.js";
 import { getStatusFromTimestamp, type EntityStatus } from "./face.js";
 
 interface EntityState {
@@ -17,14 +20,6 @@ interface EntityState {
   recentEvents: string[];
 }
 
-function getGridColumns(count: number): number {
-  if (count <= 1) return 1;
-  if (count <= 2) return 2;
-  if (count <= 4) return 2;
-  if (count <= 6) return 3;
-  return 4;
-}
-
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
 const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
 
@@ -38,6 +33,7 @@ function normalizeEntity(entity: EntityState): EntityState {
 export function App() {
   const [entities, setEntities] = useState<EntityState[]>([]);
   const [connected, setConnected] = useState(false);
+  const settings = useMemo(() => createResolvedSettings(dashboardConfig, {}), []);
 
   useEffect(() => {
     fetch(`${HUB_HTTP}/api/state`)
@@ -117,10 +113,8 @@ export function App() {
     };
   }, []);
 
-  const sorted = useMemo(() => {
-    return [...entities].sort((left, right) => right.activityScore - left.activityScore);
-  }, [entities]);
-  const columns = getGridColumns(sorted.length);
+  const visibleEntities = useMemo(() => getVisibleEntities(entities, settings), [entities, settings]);
+  const columns = getGridColumns(visibleEntities.length, settings.layout.density);
 
   return (
     <main className="dashboard">
@@ -132,10 +126,10 @@ export function App() {
         <div className={`badge ${connected ? "ok" : "warn"}`}>{connected ? "Live" : "Disconnected"}</div>
       </header>
       <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
-        {sorted.map((entity) => (
+        {visibleEntities.map((entity) => (
           <AgentFaceCard key={entity.entityId} entity={entity} />
         ))}
-        {sorted.length === 0 ? <p className="empty">No active entities yet. Start the collector to stream events.</p> : null}
+        {visibleEntities.length === 0 ? <p className="empty">No active entities yet. Start the collector to stream events.</p> : null}
       </section>
     </main>
   );
