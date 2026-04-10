@@ -8,6 +8,7 @@ import {
   getEmptyStateMessage,
   getFilterOptions,
   getGridColumns,
+  findVisibleEntityGroupById,
   getVisibleEntityGroups,
   getVisibleEntities,
   pruneViewerPreferencesToLiveOptions
@@ -214,6 +215,55 @@ describe("getVisibleEntityGroups", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].representative.entityKind).toBe("session");
+  });
+});
+
+describe("findVisibleEntityGroupById", () => {
+  it("returns the matching visible group when it is still on screen", () => {
+    const groups = getVisibleEntityGroups(
+      [
+        {
+          entityId: "tool-1",
+          sessionId: "session-a",
+          source: "codex",
+          entityKind: "tool-run",
+          currentStatus: "active",
+          lastEventAt: "2026-04-10T10:00:00.000Z",
+          activityScore: 0.4
+        },
+        {
+          entityId: "turn-1",
+          sessionId: "session-a",
+          source: "codex",
+          entityKind: "session",
+          currentStatus: "idle",
+          lastEventAt: "2026-04-10T10:05:00.000Z",
+          activityScore: 0.8
+        }
+      ],
+      recentSettings
+    );
+
+    expect(findVisibleEntityGroupById(groups, "codex|session-a")?.representative.entityId).toBe("turn-1");
+  });
+
+  it("returns undefined when a selected group is no longer visible", () => {
+    const groups = getVisibleEntityGroups(
+      [
+        {
+          entityId: "turn-1",
+          sessionId: "session-a",
+          source: "codex",
+          entityKind: "session",
+          currentStatus: "idle",
+          lastEventAt: "2026-04-10T10:05:00.000Z",
+          activityScore: 0.8
+        }
+      ],
+      recentSettings
+    );
+
+    expect(findVisibleEntityGroupById(groups, "codex|missing")).toBeUndefined();
   });
 });
 

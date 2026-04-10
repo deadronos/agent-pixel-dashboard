@@ -95,6 +95,17 @@ export function getVisibleEntityGroups<T extends DashboardEntity>(
   return visibleGroups.slice(0, settings.layout.maxAgentsShown);
 }
 
+export function findVisibleEntityGroupById<T extends DashboardEntityGroup>(
+  groups: readonly T[],
+  groupId: string | null | undefined
+): T | undefined {
+  if (!groupId) {
+    return undefined;
+  }
+
+  return groups.find((group) => group.groupId === groupId);
+}
+
 export function getVisibleEntities<T extends DashboardEntity>(entities: readonly T[], settings: ViewSettings): T[] {
   return getVisibleEntityGroups(entities, settings).map((group) => group.representative);
 }

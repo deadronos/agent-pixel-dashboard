@@ -87,9 +87,10 @@ describe("conversation detail lookup", () => {
 
     expect(detail).not.toBeNull();
     expect(detail?.members).toHaveLength(2);
-    expect(detail?.events.map((e) => e.eventId)).toEqual(["evt_s0", "evt_t0"]);
-    // Tool entity is newer, so it becomes the representative "current" snapshot by default.
-    expect(detail?.current.entityId).toBe(toolEntity.entityId);
+    expect(detail?.recentEvents.map((e) => e.eventId)).toEqual(["evt_t0", "evt_s0"]);
+    expect(detail?.current.entityId).toBe(sessionEntity.entityId);
+    expect(detail?.representative.entityId).toBe(sessionEntity.entityId);
+    expect(detail?.groupId).toBe("codex|abc123");
   });
 
   it("falls back to entityId lookup when sessionId is missing", () => {
@@ -121,7 +122,49 @@ describe("conversation detail lookup", () => {
     expect(detail).not.toBeNull();
     expect(detail?.members).toHaveLength(2);
     expect(detail?.current.entityId).toBe(toolEntity.entityId);
-    expect(detail?.events.map((e) => e.eventId)).toEqual(["evt_s0", "evt_t0"]);
+    expect(detail?.recentEvents.map((e) => e.eventId)).toEqual(["evt_t0", "evt_s0"]);
+  });
+
+  it("keeps the requested entity as current when anchoring a session lookup", () => {
+    const sessionEntity = applyEvent(undefined, sampleEvent({ entityId: "codex:session:abc123", eventId: "evt_s1" }));
+    const toolEntity = applyEvent(
+      undefined,
+      sampleEvent({
+        entityId: "codex:tool:abc123:ls",
+        entityKind: "tool-run",
+        displayName: "ls",
+        eventId: "evt_t1",
+        timestamp: "2026-04-09T20:15:40.000Z"
+      })
+    );
+
+    const entities = new Map<string, typeof sessionEntity>([
+      [sessionEntity.entityId, sessionEntity],
+      [toolEntity.entityId, toolEntity]
+    ]);
+
+    const detail = getConversationDetail(
+      { source: "codex", sessionId: "abc123", entityId: toolEntity.entityId, limit: 10 },
+      { entities, recentEvents: [], now: new Date("2026-04-09T20:15:45.000Z") }
+    );
+
+    expect(detail).not.toBeNull();
+    expect(detail?.current.entityId).toBe(toolEntity.entityId);
+    expect(detail?.representative.entityId).toBe(sessionEntity.entityId);
+    expect(detail?.group.entityId).toBe(toolEntity.entityId);
+  });
+
+  it("normalizes whitespace source values for session lookups", () => {
+    const sessionEntity = applyEvent(undefined, sampleEvent({ entityId: "codex:session:abc123", eventId: "evt_s1" }));
+    const entities = new Map<string, typeof sessionEntity>([[sessionEntity.entityId, sessionEntity]]);
+
+    const detail = getConversationDetail(
+      { source: "  codex  ", sessionId: "abc123", limit: 10 },
+      { entities, recentEvents: [], now: new Date("2026-04-09T20:15:45.000Z") }
+    );
+
+    expect(detail).not.toBeNull();
+    expect(detail?.groupId).toBe("codex|abc123");
   });
 
   it("returns only the entity when entity has no sessionId", () => {
@@ -147,7 +190,24 @@ describe("conversation detail lookup", () => {
 
     expect(detail).not.toBeNull();
     expect(detail?.members).toHaveLength(1);
-    expect(detail?.events.map((e) => e.eventId)).toEqual(["evt_a0"]);
+    expect(detail?.recentEvents.map((e) => e.eventId)).toEqual(["evt_a0"]);
+  });
+
+  it("clamps the exported helper limit to a safe range", () => {
+    const sessionEntity = applyEvent(undefined, sampleEvent({ entityId: "codex:session:abc123", eventId: "evt_s1" }));
+    const entities = new Map<string, typeof sessionEntity>([[sessionEntity.entityId, sessionEntity]]);
+    const recentEvents: NormalizedEvent[] = [
+      sampleEvent({ entityId: sessionEntity.entityId, eventId: "evt_old", timestamp: "2026-04-09T20:15:30.000Z" }),
+      sampleEvent({ entityId: sessionEntity.entityId, eventId: "evt_new", timestamp: "2026-04-09T20:15:40.000Z" })
+    ];
+
+    const detail = getConversationDetail(
+      { source: "codex", sessionId: "abc123", limit: 0 },
+      { entities, recentEvents, now: new Date("2026-04-09T20:15:45.000Z") }
+    );
+
+    expect(detail).not.toBeNull();
+    expect(detail?.recentEvents.map((event) => event.eventId)).toEqual(["evt_new"]);
   });
 });
 
@@ -163,5 +223,84 @@ describe("conversation detail handler", () => {
 
     await handler(req as any, res as any, () => {});
     expect(res.statusCode).toBe(404);
+  });
+
+  it("returns 400 for missing source on session lookup", async () => {
+    const handler = createConversationDetailHandler({
+      entities: new Map(),
+      recentEvents: []
+    });
+
+    const req = { query: { sessionId: "missing" } } as any;
+    const res = createMockRes();
+
+    await handler(req as any, res as any, () => {});
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 400 when no lookup key is provided", async () => {
+    const handler = createConversationDetailHandler({
+      entities: new Map(),
+      recentEvents: []
+    });
+
+    const req = { query: {} } as any;
+    const res = createMockRes();
+
+    await handler(req as any, res as any, () => {});
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("returns 404 for an entity lookup with no match", async () => {
+    const handler = createConversationDetailHandler({
+      entities: new Map(),
+      recentEvents: []
+    });
+
+    const req = { query: { entityId: "missing" } } as any;
+    const res = createMockRes();
+
+    await handler(req as any, res as any, () => {});
+    expect(res.statusCode).toBe(404);
+  });
+
+  it("returns a clamped timeline and detail body for a successful lookup", async () => {
+    const sessionEntity = applyEvent(undefined, sampleEvent({ entityId: "codex:session:abc123", eventId: "evt_s1" }));
+    const entities = new Map<string, typeof sessionEntity>([[sessionEntity.entityId, sessionEntity]]);
+    const handler = createConversationDetailHandler({
+      entities,
+      recentEvents: [
+        sampleEvent({ entityId: sessionEntity.entityId, eventId: "evt_old", timestamp: "2026-04-09T20:15:30.000Z" }),
+        sampleEvent({ entityId: sessionEntity.entityId, eventId: "evt_new", timestamp: "2026-04-09T20:15:40.000Z" })
+      ]
+    });
+
+    const req = { query: { source: "codex", sessionId: "abc123", limit: "1" } } as any;
+    const res = createMockRes();
+
+    await handler(req as any, res as any, () => {});
+    expect(res.statusCode).toBe(200);
+    expect((res.body as any).groupId).toBe("codex|abc123");
+    expect((res.body as any).recentEvents.map((event: NormalizedEvent) => event.eventId)).toEqual(["evt_new"]);
+    expect((res.body as any).current.entityId).toBe("codex:session:abc123");
+  });
+
+  it("falls back to the default limit when the query limit is invalid", async () => {
+    const sessionEntity = applyEvent(undefined, sampleEvent({ entityId: "codex:session:abc123", eventId: "evt_s1" }));
+    const entities = new Map<string, typeof sessionEntity>([[sessionEntity.entityId, sessionEntity]]);
+    const handler = createConversationDetailHandler({
+      entities,
+      recentEvents: [
+        sampleEvent({ entityId: sessionEntity.entityId, eventId: "evt_old", timestamp: "2026-04-09T20:15:30.000Z" }),
+        sampleEvent({ entityId: sessionEntity.entityId, eventId: "evt_new", timestamp: "2026-04-09T20:15:40.000Z" })
+      ]
+    });
+
+    const req = { query: { source: "codex", sessionId: "abc123", limit: ["bad", "worse"] } } as any;
+    const res = createMockRes();
+
+    await handler(req as any, res as any, () => {});
+    expect(res.statusCode).toBe(200);
+    expect((res.body as any).recentEvents).toHaveLength(2);
   });
 });

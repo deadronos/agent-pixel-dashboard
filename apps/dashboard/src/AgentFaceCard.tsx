@@ -135,12 +135,16 @@ export function AgentFaceCard({
   entity,
   groupCount,
   theme,
-  visualRules
+  visualRules,
+  selected = false,
+  onClick
 }: {
   entity: DashboardEntity;
   groupCount: number;
   theme: ThemePreset;
   visualRules: VisualRule[];
+  selected?: boolean;
+  onClick?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const visualProfile = useMemo(
@@ -178,8 +182,11 @@ export function AgentFaceCard({
   }, [currentStatus, visualProfile]);
 
   return (
-    <article
-      className={`face-card ${entity.currentStatus}`}
+    <button
+      type="button"
+      className={`face-card${selected ? " selected" : ""} ${entity.currentStatus}`}
+      aria-pressed={selected}
+      onClick={onClick}
       style={
         {
           "--card-bg": palette.background,
@@ -205,6 +212,6 @@ export function AgentFaceCard({
           {entity.source} on {entity.sourceHost}
         </span>
       </div>
-    </article>
+    </button>
   );
 }

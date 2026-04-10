@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { AgentFaceCard } from "./AgentFaceCard.js";
+import {
+  buildConversationDetailUrl,
+  type ConversationDetailPayload
+} from "./conversation-detail.js";
+import { ConversationDrawer } from "./ConversationDrawer.js";
 import { SettingsPanel } from "./SettingsPanel.js";
 import { dashboardConfig } from "./dashboard-config.js";
 import { createResolvedSettings, type ViewerPreferences } from "./dashboard-settings.js";
@@ -7,9 +12,11 @@ import {
   getEmptyStateMessage,
   getFilterOptions,
   getGridColumns,
+  findVisibleEntityGroupById,
   getVisibleEntityGroups,
   pruneViewerPreferencesToLiveOptions
 } from "./dashboard-view.js";
+import { toggleSelectedGroupId } from "./conversation-selection.js";
 import { resolveLiveStatus, type DashboardEntity } from "./face.js";
 import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
 
@@ -29,6 +36,10 @@ export function App() {
   const [viewerPreferences, setViewerPreferences] = useState<ViewerPreferences>(() =>
     loadViewerPreferences()
   );
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<ConversationDetailPayload | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const filterOptions = useMemo(() => getFilterOptions(entities), [entities]);
   const activeViewerPreferences = useMemo(
     () => pruneViewerPreferencesToLiveOptions(viewerPreferences, filterOptions),
@@ -122,8 +133,89 @@ export function App() {
   }, []);
 
   const visibleGroups = useMemo(() => getVisibleEntityGroups(entities, settings), [entities, settings]);
+  const selectedVisibleGroup = useMemo(
+    () => findVisibleEntityGroupById(visibleGroups, selectedGroupId),
+    [selectedGroupId, visibleGroups]
+  );
+  const selectedVisibleGroupId = selectedVisibleGroup?.groupId ?? null;
   const columns = getGridColumns(visibleGroups.length, settings.layout.density);
   const emptyMessage = getEmptyStateMessage(entities.length, visibleGroups.length);
+
+  useEffect(() => {
+    if (!selectedGroupId) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedGroupId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedGroupId]);
+
+  useEffect(() => {
+    if (!selectedGroupId) {
+      setSelectedDetail(null);
+      setDetailLoading(false);
+      setDetailError(null);
+      return;
+    }
+
+    if (!selectedVisibleGroup) {
+      setSelectedGroupId(null);
+      setSelectedDetail(null);
+      setDetailLoading(false);
+      setDetailError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setDetailLoading(true);
+    setDetailError(null);
+    setSelectedDetail(null);
+
+    fetch(
+      buildConversationDetailUrl(HUB_HTTP, {
+        source: selectedVisibleGroup.source,
+        sessionId: selectedVisibleGroup.sessionId,
+        entityId: selectedVisibleGroup.representative.entityId
+      }),
+      { signal: controller.signal }
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`detail request failed (${response.status})`);
+        }
+        return (await response.json()) as ConversationDetailPayload;
+      })
+      .then((detail) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setSelectedDetail(detail);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setSelectedDetail(null);
+        setDetailError(error instanceof Error ? error.message : "Failed to load conversation detail");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setDetailLoading(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [selectedGroupId, selectedVisibleGroupId]);
 
   return (
     <main
@@ -166,6 +258,10 @@ export function App() {
               groupCount={group.memberCount}
               theme={settings.theme}
               visualRules={settings.visualRules}
+              selected={selectedVisibleGroupId === group.groupId}
+              onClick={() => {
+                setSelectedGroupId((current) => toggleSelectedGroupId(current, group.groupId));
+              }}
             />
           ))}
           {visibleGroups.length === 0 ? (
@@ -173,6 +269,15 @@ export function App() {
           ) : null}
         </section>
       </div>
+
+      <ConversationDrawer
+        open={Boolean(selectedVisibleGroup)}
+        group={selectedVisibleGroup ?? null}
+        detail={selectedDetail}
+        loading={detailLoading}
+        error={detailError}
+        onClose={() => setSelectedGroupId(null)}
+      />
     </main>
   );
 }

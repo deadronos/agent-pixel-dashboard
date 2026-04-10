@@ -6,10 +6,11 @@ export interface ConversationDetailQuery {
   source?: string;
   sessionId?: string;
   entityId?: string;
-  limit?: number;
+  limit?: unknown;
 }
 
 export interface ConversationDetailPayload {
+  groupId: string;
   group: {
     source: string;
     sessionId?: string;
@@ -17,8 +18,9 @@ export interface ConversationDetailPayload {
   };
   matchedBy: "session" | "entity";
   current: EntityState;
+  representative: EntityState;
   members: EntityState[];
-  events: NormalizedEvent[];
+  recentEvents: NormalizedEvent[];
 }
 
 export interface ConversationDetailContext {
@@ -27,40 +29,83 @@ export interface ConversationDetailContext {
   now: Date;
 }
 
-function safeLimit(raw: unknown): number {
-  const value = Number(raw);
+function withComputedStatus(entity: EntityState, now: Date): EntityState {
+  return { ...entity, currentStatus: computeStatus(entity, now) };
+}
+
+function clampLimit(raw: unknown): number {
+  const normalized = Array.isArray(raw) ? raw[0] : raw;
+  const value = Number(normalized);
   if (!Number.isFinite(value)) {
     return 200;
   }
   return Math.min(Math.max(value, 1), 500);
 }
 
-function withComputedStatus(entity: EntityState, now: Date): EntityState {
-  return { ...entity, currentStatus: computeStatus(entity, now) };
+function normalizeQueryText(raw: unknown): string | undefined {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function timestampToMs(value: string): number {
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function newestFirst(a: EntityState, b: EntityState): number {
-  return new Date(b.lastEventAt).getTime() - new Date(a.lastEventAt).getTime();
+  return timestampToMs(b.lastEventAt) - timestampToMs(a.lastEventAt);
 }
 
-function resolveBySession(source: string, sessionId: string, ctx: ConversationDetailContext): ConversationDetailPayload | null {
-  const members = [...ctx.entities.values()]
+function buildSessionMembers(source: string, sessionId: string, ctx: ConversationDetailContext): EntityState[] {
+  return [...ctx.entities.values()]
     .filter((entity) => entity.source === source && entity.sessionId === sessionId)
     .map((entity) => withComputedStatus(entity, ctx.now))
     .sort(newestFirst);
+}
+
+function buildSessionEvents(
+  source: string,
+  sessionId: string,
+  ctx: ConversationDetailContext,
+  limit: number
+): NormalizedEvent[] {
+  return ctx.recentEvents
+    .filter((event) => event.source === source && event.sessionId === sessionId)
+    .sort((left, right) => timestampToMs(right.timestamp) - timestampToMs(left.timestamp))
+    .slice(0, limit);
+}
+
+function resolveBySession(
+  source: string,
+  sessionId: string,
+  ctx: ConversationDetailContext,
+  limit: number,
+  currentEntityId?: string
+): ConversationDetailPayload | null {
+  const members = buildSessionMembers(source, sessionId, ctx);
 
   if (members.length === 0) {
     return null;
   }
 
-  const events = ctx.recentEvents.filter((event) => event.source === source && event.sessionId === sessionId);
+  const events = buildSessionEvents(source, sessionId, ctx, limit);
+  const representative = pickRepresentative(members);
+  const current =
+    (currentEntityId ? members.find((member) => member.entityId === currentEntityId) : undefined) ??
+    representative;
 
   return {
+    groupId: `${source}|${sessionId}`,
     group: { source, sessionId },
     matchedBy: "session",
-    current: members[0],
+    current,
+    representative,
     members,
-    events
+    recentEvents: events
   };
 }
 
@@ -71,68 +116,65 @@ function resolveByEntity(entityId: string, ctx: ConversationDetailContext, limit
   }
 
   if (entity.sessionId) {
-    const members = [...ctx.entities.values()]
-      .filter((entry) => entry.source === entity.source && entry.sessionId === entity.sessionId)
-      .map((entry) => withComputedStatus(entry, ctx.now))
-      .sort(newestFirst);
-
-    const events = ctx.recentEvents.filter((event) => event.source === entity.source && event.sessionId === entity.sessionId).slice(-limit);
-
-    return {
-      group: { source: entity.source, sessionId: entity.sessionId, entityId },
-      matchedBy: "entity",
-      current: withComputedStatus(entity, ctx.now),
-      members,
-      events
-    };
+    const base = resolveBySession(entity.source, entity.sessionId, ctx, limit, entity.entityId);
+    return base ? { ...base, group: { ...base.group, entityId: base.current.entityId } } : null;
   }
 
-  const events = ctx.recentEvents.filter((event) => event.entityId === entity.entityId).slice(-limit);
+  const events = ctx.recentEvents
+    .filter((event) => event.entityId === entity.entityId)
+    .sort((left, right) => timestampToMs(right.timestamp) - timestampToMs(left.timestamp))
+    .slice(0, limit);
+  const representative = withComputedStatus(entity, ctx.now);
   return {
+    groupId: entity.entityId,
     group: { source: entity.source, entityId },
     matchedBy: "entity",
-    current: withComputedStatus(entity, ctx.now),
-    members: [withComputedStatus(entity, ctx.now)],
-    events
+    current: representative,
+    representative,
+    members: [representative],
+    recentEvents: events
   };
 }
 
 export function getConversationDetail(query: ConversationDetailQuery, ctx: ConversationDetailContext): ConversationDetailPayload | null {
-  const limit = safeLimit(query.limit);
+  const limit = clampLimit(query.limit);
+  const source = normalizeQueryText(query.source);
+  const sessionId = normalizeQueryText(query.sessionId);
 
-  if (query.sessionId) {
-    if (!query.source) {
+  if (sessionId) {
+    if (!source) {
       return null;
     }
-    const base = resolveBySession(query.source, query.sessionId, ctx);
+    const anchorEntityId = normalizeQueryText(query.entityId);
+    const base = resolveBySession(source, sessionId, ctx, limit, anchorEntityId);
     if (!base) {
       return null;
     }
 
     // Allow callers to anchor the "current" entity inside a session group if they provide entityId.
-    if (query.entityId) {
-      const anchored = base.members.find((member) => member.entityId === query.entityId);
+    if (anchorEntityId) {
+      const anchored = base.members.find((member) => member.entityId === anchorEntityId);
       if (anchored) {
-        return { ...base, group: { ...base.group, entityId: query.entityId }, current: anchored, events: base.events.slice(-limit) };
+        return { ...base, group: { ...base.group, entityId: anchored.entityId }, current: anchored };
       }
     }
 
-    return { ...base, events: base.events.slice(-limit) };
+    return base;
   }
 
-  if (!query.entityId) {
+  const entityId = normalizeQueryText(query.entityId);
+  if (!entityId) {
     return null;
   }
 
-  return resolveByEntity(query.entityId, ctx, limit);
+  return resolveByEntity(entityId, ctx, limit);
 }
 
 export function createConversationDetailHandler(opts: { entities: Map<string, EntityState>; recentEvents: NormalizedEvent[] }): RequestHandler {
   return async (req, res) => {
-    const source = typeof req.query.source === "string" ? req.query.source : undefined;
-    const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId : undefined;
-    const entityId = typeof req.query.entityId === "string" ? req.query.entityId : undefined;
-    const limit = safeLimit(req.query.limit);
+    const source = normalizeQueryText(req.query.source);
+    const sessionId = normalizeQueryText(req.query.sessionId);
+    const entityId = normalizeQueryText(req.query.entityId);
 
     if (sessionId && !source) {
       res.status(400).json({ error: "missing_source" });
@@ -144,7 +186,7 @@ export function createConversationDetailHandler(opts: { entities: Map<string, En
     }
 
     const detail = getConversationDetail(
-      { source, sessionId, entityId, limit },
+      { source, sessionId, entityId, limit: req.query.limit },
       {
         entities: opts.entities,
         recentEvents: opts.recentEvents,
@@ -159,4 +201,17 @@ export function createConversationDetailHandler(opts: { entities: Map<string, En
 
     res.json(detail);
   };
+}
+
+function pickRepresentative(members: readonly EntityState[]): EntityState {
+  return [...members].sort((left, right) => {
+    if (left.entityKind === "session" && right.entityKind !== "session") {
+      return -1;
+    }
+    if (right.entityKind === "session" && left.entityKind !== "session") {
+      return 1;
+    }
+
+    return timestampToMs(right.lastEventAt) - timestampToMs(left.lastEventAt);
+  })[0];
 }
