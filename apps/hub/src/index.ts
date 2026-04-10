@@ -1,3 +1,4 @@
+import "./env.js";
 import http from "node:http";
 import cors from "cors";
 import express from "express";

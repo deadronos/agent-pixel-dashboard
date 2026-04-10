@@ -1,3 +1,4 @@
+import "./env.js";
 import { setInterval } from "node:timers";
 import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import type { WatchHandle } from "@agent-watch/plugin-sdk";
