@@ -106,6 +106,11 @@ app.get("/api/state", (_req, res) => {
 });
 
 app.get("/api/events/recent", (req, res) => {
+  if (getAuthHeader(req) !== authToken) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+
   const limit = Number(req.query.limit ?? 100);
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
   res.json({ events: recentEvents.slice(-safeLimit) });
