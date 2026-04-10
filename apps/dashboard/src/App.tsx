@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { AgentFaceCard } from "./AgentFaceCard.js";
+import { SettingsPanel } from "./SettingsPanel.js";
 import { dashboardConfig } from "./dashboard-config.js";
-import { createResolvedSettings } from "./dashboard-settings.js";
+import { createResolvedSettings, type ViewerPreferences } from "./dashboard-settings.js";
 import { getGridColumns, getVisibleEntities } from "./dashboard-view.js";
 import { resolveLiveStatus, type DashboardEntity } from "./face.js";
+import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
 
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
 const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
@@ -18,7 +20,17 @@ function normalizeEntity(entity: DashboardEntity): DashboardEntity {
 export function App() {
   const [entities, setEntities] = useState<DashboardEntity[]>([]);
   const [connected, setConnected] = useState(false);
-  const settings = useMemo(() => createResolvedSettings(dashboardConfig, {}), []);
+  const [viewerPreferences, setViewerPreferences] = useState<ViewerPreferences>(() =>
+    loadViewerPreferences()
+  );
+  const settings = useMemo(
+    () => createResolvedSettings(dashboardConfig, viewerPreferences),
+    [viewerPreferences]
+  );
+
+  useEffect(() => {
+    saveViewerPreferences(viewerPreferences);
+  }, [viewerPreferences]);
 
   useEffect(() => {
     fetch(`${HUB_HTTP}/api/state`)
@@ -113,19 +125,38 @@ export function App() {
         } as CSSProperties
       }
     >
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Live session mural</p>
-          <h1>Agent Watch</h1>
-        </div>
-        <div className={`badge ${connected ? "ok" : "warn"}`}>{connected ? "Live" : "Disconnected"}</div>
-      </header>
-      <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
-        {visibleEntities.map((entity) => (
-          <AgentFaceCard key={entity.entityId} entity={entity} theme={settings.theme} visualRules={settings.visualRules} />
-        ))}
-        {visibleEntities.length === 0 ? <p className="empty">No active entities yet. Start the collector to stream events.</p> : null}
-      </section>
+      <div className="dashboard__shell">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">Live session mural</p>
+            <h1>Agent Watch</h1>
+          </div>
+          <div className={`badge ${connected ? "ok" : "warn"}`}>{connected ? "Live" : "Disconnected"}</div>
+        </header>
+
+        {settings.ui.showSettingsPanel ? (
+          <SettingsPanel
+            config={dashboardConfig}
+            settings={settings}
+            onChange={(patch) => setViewerPreferences((previous) => ({ ...previous, ...patch }))}
+            onReset={() => setViewerPreferences({})}
+          />
+        ) : null}
+
+        <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
+          {visibleEntities.map((entity) => (
+            <AgentFaceCard
+              key={entity.entityId}
+              entity={entity}
+              theme={settings.theme}
+              visualRules={settings.visualRules}
+            />
+          ))}
+          {visibleEntities.length === 0 ? (
+            <p className="empty">No active entities yet. Start the collector to stream events.</p>
+          ) : null}
+        </section>
+      </div>
     </main>
   );
 }
