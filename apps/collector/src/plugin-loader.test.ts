@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractSourceFromDirName, resolveRequestedSources } from "./plugin-loader.js";
+import { extractSourceFromDirName, resolvePluginDir, resolveRequestedSources } from "./plugin-loader.js";
 
 describe("extractSourceFromDirName", () => {
   it("extracts source from plugin directory name", () => {
@@ -24,5 +24,15 @@ describe("resolveRequestedSources", () => {
     const discovered = ["codex", "claude", "gemini"];
     expect(resolveRequestedSources(["gemini", "codex"], discovered)).toEqual(["gemini", "codex"]);
     expect(resolveRequestedSources(["gemini", "unknown", "codex"], discovered)).toEqual(["gemini", "codex"]);
+  });
+});
+
+describe("resolvePluginDir", () => {
+  it("resolves relative paths against the repo root", () => {
+    expect(resolvePluginDir("plugins")).toMatch(/\/plugins$/);
+  });
+
+  it("preserves absolute paths", () => {
+    expect(resolvePluginDir("/tmp/custom-plugins")).toBe("/tmp/custom-plugins");
   });
 });
