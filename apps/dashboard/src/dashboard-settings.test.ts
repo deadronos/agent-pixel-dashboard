@@ -30,6 +30,23 @@ describe("createResolvedSettings", () => {
     expect(resolved.theme.id).toBe(dashboardConfig.themes.defaultThemeId);
   });
 
+  it("ignores persisted theme overrides when shared config locks theme changes", () => {
+    const resolved = createResolvedSettings(
+      {
+        ...dashboardConfig,
+        ui: {
+          ...dashboardConfig.ui,
+          allowViewerThemeOverride: false
+        }
+      },
+      {
+        themeId: "night-shift"
+      }
+    );
+
+    expect(resolved.theme.id).toBe(dashboardConfig.themes.defaultThemeId);
+  });
+
   it("throws when no theme preset can be resolved", () => {
     const config: DashboardConfig = {
       ...dashboardConfig,

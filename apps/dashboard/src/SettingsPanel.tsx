@@ -3,17 +3,42 @@ import type { DashboardConfig, ResolvedSettings, ViewerPreferences } from "./das
 interface SettingsPanelProps {
   config: DashboardConfig;
   settings: ResolvedSettings;
+  sourceOptions?: string[];
+  entityKindOptions?: string[];
+  viewerPreferences?: ViewerPreferences;
   onChange: (patch: ViewerPreferences) => void;
   onReset: () => void;
 }
 
-export function SettingsPanel({ config, settings, onChange, onReset }: SettingsPanelProps) {
+export function SettingsPanel({
+  config,
+  settings,
+  sourceOptions = [],
+  entityKindOptions = [],
+  viewerPreferences = {},
+  onChange,
+  onReset
+}: SettingsPanelProps) {
   const maxAgentsShown = settings.layout.maxAgentsShown;
   const density = settings.layout.density;
   const sortMode = settings.layout.sortMode;
   const hideDormant = settings.filters.hideDormant;
   const hideDone = settings.filters.hideDone;
   const themeId = settings.theme.id;
+  const selectedSources = viewerPreferences.visibleSources ?? sourceOptions;
+  const selectedEntityKinds = viewerPreferences.visibleEntityKinds ?? entityKindOptions;
+
+  function toggleSelection(
+    currentSelection: string[],
+    value: string,
+    key: "visibleSources" | "visibleEntityKinds"
+  ) {
+    const next = currentSelection.includes(value)
+      ? currentSelection.filter((entry) => entry !== value)
+      : [...currentSelection, value];
+
+    onChange({ [key]: next } as ViewerPreferences);
+  }
 
   return (
     <aside className="settings-panel" aria-label="Dashboard settings">
@@ -97,6 +122,56 @@ export function SettingsPanel({ config, settings, onChange, onReset }: SettingsP
           />
           <span>Hide done</span>
         </label>
+
+        <div className="settings-panel__filters">
+          <div className="settings-panel__filters-header">
+            <span>Sources</span>
+          </div>
+          <div className="settings-panel__filter-list">
+            {sourceOptions.length > 0 ? (
+              sourceOptions.map((source) => (
+                <label key={source} className="settings-panel__check">
+                  <input
+                    type="checkbox"
+                    checked={selectedSources.includes(source)}
+                    onChange={() => toggleSelection(selectedSources, source, "visibleSources")}
+                  />
+                  <span>{source}</span>
+                </label>
+              ))
+            ) : (
+              <p className="settings-panel__note settings-panel__note--compact">
+                Waiting for live entities to populate source filters.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="settings-panel__filters">
+          <div className="settings-panel__filters-header">
+            <span>Entity kinds</span>
+          </div>
+          <div className="settings-panel__filter-list">
+            {entityKindOptions.length > 0 ? (
+              entityKindOptions.map((entityKind) => (
+                <label key={entityKind} className="settings-panel__check">
+                  <input
+                    type="checkbox"
+                    checked={selectedEntityKinds.includes(entityKind)}
+                    onChange={() =>
+                      toggleSelection(selectedEntityKinds, entityKind, "visibleEntityKinds")
+                    }
+                  />
+                  <span>{entityKind}</span>
+                </label>
+              ))
+            ) : (
+              <p className="settings-panel__note settings-panel__note--compact">
+                Waiting for live entities to populate entity kind filters.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       {!settings.ui.allowViewerThemeOverride ? (

@@ -60,6 +60,8 @@ export interface ResolvedSettings {
     hideDone: boolean;
     visibleSources: string[];
     visibleEntityKinds: string[];
+    sourceFilterActive: boolean;
+    entityKindFilterActive: boolean;
   };
   theme: ThemePreset;
   visualRules: VisualRule[];
@@ -69,7 +71,9 @@ export interface ResolvedSettings {
 
 export function createResolvedSettings(config: DashboardConfig, viewer: ViewerPreferences): ResolvedSettings {
   const theme =
-    config.themes.presets.find((preset) => preset.id === viewer.themeId) ??
+    config.themes.presets.find(
+      (preset) => preset.id === (config.ui.allowViewerThemeOverride ? viewer.themeId : undefined)
+    ) ??
     config.themes.presets.find((preset) => preset.id === config.themes.defaultThemeId) ??
     config.themes.presets[0];
 
@@ -87,7 +91,10 @@ export function createResolvedSettings(config: DashboardConfig, viewer: ViewerPr
       hideDormant: viewer.hideDormant ?? config.filters.hideDormant,
       hideDone: viewer.hideDone ?? config.filters.hideDone,
       visibleSources: viewer.visibleSources ?? config.filters.visibleSources,
-      visibleEntityKinds: viewer.visibleEntityKinds ?? config.filters.visibleEntityKinds
+      visibleEntityKinds: viewer.visibleEntityKinds ?? config.filters.visibleEntityKinds,
+      sourceFilterActive: viewer.visibleSources !== undefined || config.filters.visibleSources.length > 0,
+      entityKindFilterActive:
+        viewer.visibleEntityKinds !== undefined || config.filters.visibleEntityKinds.length > 0
     },
     theme,
     visualRules: config.visualRules,

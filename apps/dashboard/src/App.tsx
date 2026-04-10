@@ -3,7 +3,13 @@ import { AgentFaceCard } from "./AgentFaceCard.js";
 import { SettingsPanel } from "./SettingsPanel.js";
 import { dashboardConfig } from "./dashboard-config.js";
 import { createResolvedSettings, type ViewerPreferences } from "./dashboard-settings.js";
-import { getGridColumns, getVisibleEntities } from "./dashboard-view.js";
+import {
+  getEmptyStateMessage,
+  getFilterOptions,
+  getGridColumns,
+  getVisibleEntities,
+  pruneViewerPreferencesToLiveOptions
+} from "./dashboard-view.js";
 import { resolveLiveStatus, type DashboardEntity } from "./face.js";
 import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
 
@@ -23,14 +29,19 @@ export function App() {
   const [viewerPreferences, setViewerPreferences] = useState<ViewerPreferences>(() =>
     loadViewerPreferences()
   );
+  const filterOptions = useMemo(() => getFilterOptions(entities), [entities]);
+  const activeViewerPreferences = useMemo(
+    () => pruneViewerPreferencesToLiveOptions(viewerPreferences, filterOptions),
+    [viewerPreferences, filterOptions]
+  );
   const settings = useMemo(
-    () => createResolvedSettings(dashboardConfig, viewerPreferences),
-    [viewerPreferences]
+    () => createResolvedSettings(dashboardConfig, activeViewerPreferences),
+    [activeViewerPreferences]
   );
 
   useEffect(() => {
-    saveViewerPreferences(viewerPreferences);
-  }, [viewerPreferences]);
+    saveViewerPreferences(activeViewerPreferences);
+  }, [activeViewerPreferences]);
 
   useEffect(() => {
     fetch(`${HUB_HTTP}/api/state`)
@@ -112,6 +123,7 @@ export function App() {
 
   const visibleEntities = useMemo(() => getVisibleEntities(entities, settings), [entities, settings]);
   const columns = getGridColumns(visibleEntities.length, settings.layout.density);
+  const emptyMessage = getEmptyStateMessage(entities.length, visibleEntities.length);
 
   return (
     <main
@@ -138,6 +150,9 @@ export function App() {
           <SettingsPanel
             config={dashboardConfig}
             settings={settings}
+            sourceOptions={filterOptions.sources}
+            entityKindOptions={filterOptions.entityKinds}
+            viewerPreferences={activeViewerPreferences}
             onChange={(patch) => setViewerPreferences((previous) => ({ ...previous, ...patch }))}
             onReset={() => setViewerPreferences({})}
           />
@@ -153,7 +168,7 @@ export function App() {
             />
           ))}
           {visibleEntities.length === 0 ? (
-            <p className="empty">No active entities yet. Start the collector to stream events.</p>
+            <p className={`empty ${entities.length > 0 ? "empty--filtered" : ""}`}>{emptyMessage}</p>
           ) : null}
         </section>
       </div>

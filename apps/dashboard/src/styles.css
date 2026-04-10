@@ -138,6 +138,28 @@ body {
   gap: 0.8rem;
 }
 
+.settings-panel__filters {
+  display: grid;
+  gap: 0.55rem;
+  padding-top: 0.1rem;
+}
+
+.settings-panel__filters-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-text-color);
+}
+
+.settings-panel__filter-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
 .settings-panel__field,
 .settings-panel__check {
   display: grid;
@@ -196,6 +218,10 @@ body {
   margin: 0.9rem 0 0;
   color: var(--muted-text-color);
   font-size: 0.78rem;
+}
+
+.settings-panel__note--compact {
+  margin-top: 0;
 }
 
 .face-card {
@@ -332,6 +358,11 @@ body {
   border-radius: 1rem;
   background: var(--panel-bg);
   border: 1px solid rgba(19, 32, 50, 0.08);
+}
+
+.empty--filtered {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.3);
 }
 
 @media (max-width: 700px) {
