@@ -6,8 +6,8 @@ import { buildSizedBatches } from "./batching.js";
 import { loadConfig } from "./config.js";
 import {
   discoverPluginSources,
-  getDefaultPluginsDir,
   loadPluginsFromSources,
+  resolvePluginDir,
   resolveRequestedSources
 } from "./plugin-loader.js";
 
@@ -48,16 +48,12 @@ async function flushQueue(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const pluginDir = config.pluginsDir || getDefaultPluginsDir();
+  const pluginDir = resolvePluginDir(config.pluginsDir);
   const discoveredSources = await discoverPluginSources(pluginDir);
   const selectedSources = resolveRequestedSources(config.watchSources, discoveredSources);
   const selectedPlugins = await loadPluginsFromSources(selectedSources);
 
   if (selectedPlugins.length === 0) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `collector found no plugins to load (WATCH_SOURCES=${config.watchSources.join(", ")} discovered=${discoveredSources.join(", ")})`
-    );
     return;
   }
 

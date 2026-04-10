@@ -46,7 +46,22 @@ export async function loadPluginsFromSources(sources: string[]): Promise<Collect
   return loaded;
 }
 
+export function resolvePluginDir(pluginDir: string): string {
+  const trimmed = pluginDir.trim();
+  if (trimmed.length === 0) {
+    return getDefaultPluginsDir();
+  }
+  if (path.isAbsolute(trimmed)) {
+    return trimmed;
+  }
+  return path.resolve(getRepoRoot(), trimmed);
+}
+
 export function getDefaultPluginsDir(): string {
-  const pluginsUrl = new URL("../../../plugins", import.meta.url);
-  return path.resolve(fileURLToPath(pluginsUrl));
+  return path.join(getRepoRoot(), "plugins");
+}
+
+function getRepoRoot(): string {
+  const repoUrl = new URL("../../../", import.meta.url);
+  return path.resolve(fileURLToPath(repoUrl));
 }
