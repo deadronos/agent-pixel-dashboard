@@ -5,6 +5,7 @@ import express from "express";
 import { WebSocketServer } from "ws";
 import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import { CassSearchClient } from "./cass-search.js";
+import { createConversationDetailHandler } from "./conversation-detail.js";
 import { applyEvent, computeStatus, type EntityState } from "./state.js";
 
 interface IngestBatchBody {
@@ -111,6 +112,14 @@ app.get("/api/events/recent", (req, res) => {
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
   res.json({ events: recentEvents.slice(-safeLimit) });
 });
+
+app.get(
+  "/api/entity-detail",
+  createConversationDetailHandler({
+    entities,
+    recentEvents
+  })
+);
 
 app.get("/api/search/sessions", async (req, res) => {
   const query = String(req.query.q ?? "").trim();
