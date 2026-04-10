@@ -9,6 +9,41 @@ export interface ProviderPalette {
   background: string;
 }
 
+export const namedPaletteIds = ["mint", "rose", "sky"] as const;
+
+export type NamedPaletteId = (typeof namedPaletteIds)[number];
+
+const namedPalettes: Record<NamedPaletteId, ProviderPalette> = {
+  mint: {
+    base: "hsl(162 70% 58%)",
+    accent: "hsl(181 84% 52%)",
+    glow: "hsl(166 94% 78%)",
+    shade: "hsl(164 42% 18%)",
+    line: "hsl(168 30% 12%)",
+    background: "linear-gradient(160deg, hsl(154 68% 94%), hsl(182 72% 84%))"
+  },
+  rose: {
+    base: "hsl(344 72% 64%)",
+    accent: "hsl(12 88% 58%)",
+    glow: "hsl(339 96% 82%)",
+    shade: "hsl(342 44% 20%)",
+    line: "hsl(341 32% 14%)",
+    background: "linear-gradient(160deg, hsl(338 88% 95%), hsl(18 76% 86%))"
+  },
+  sky: {
+    base: "hsl(204 74% 62%)",
+    accent: "hsl(221 90% 58%)",
+    glow: "hsl(197 96% 84%)",
+    shade: "hsl(210 44% 20%)",
+    line: "hsl(214 32% 14%)",
+    background: "linear-gradient(160deg, hsl(203 90% 95%), hsl(219 80% 86%))"
+  }
+};
+
+export function isNamedPaletteId(value: string): value is NamedPaletteId {
+  return (namedPaletteIds as readonly string[]).includes(value);
+}
+
 export interface FaceMood {
   eyes: "wide" | "calm" | "sleepy" | "closed" | "happy" | "error";
   mouth: "smile" | "soft" | "flat" | "open" | "frown";
@@ -38,6 +73,10 @@ export function getProviderPalette(provider: string): ProviderPalette {
     line: hsl(hue, 32, 14),
     background: `linear-gradient(160deg, ${hsl(hue, 88, 94)}, ${hsl((hue + 20) % 360, 78, 84)})`
   };
+}
+
+export function getNamedPalette(name: NamedPaletteId): ProviderPalette {
+  return namedPalettes[name];
 }
 
 export function getFaceMood(status: EntityStatus): FaceMood {

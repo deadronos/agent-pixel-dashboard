@@ -1,6 +1,15 @@
 import type { DashboardConfig } from "./dashboard-settings.js";
+import type { NamedPaletteId } from "./face.js";
 
-export const dashboardConfig: DashboardConfig = {
+type DashboardVisualRule = Omit<DashboardConfig["visualRules"][number], "themePalette"> & {
+  themePalette?: NamedPaletteId;
+};
+
+type StrictDashboardConfig = Omit<DashboardConfig, "visualRules"> & {
+  visualRules: DashboardVisualRule[];
+};
+
+export const dashboardConfig = {
   layout: {
     maxAgentsShown: 12,
     density: "comfortable",
@@ -35,9 +44,13 @@ export const dashboardConfig: DashboardConfig = {
       }
     ]
   },
-  visualRules: [],
+  visualRules: [
+    { source: "codex", entityKind: "worker", faceVariant: "terminal-sprite", themePalette: "mint" },
+    { source: "claude", faceVariant: "rounded-bot", themePalette: "rose" },
+    { entityKind: "session", faceVariant: "soft-ghost", themePalette: "sky" }
+  ],
   ui: {
     showSettingsPanel: true,
     allowViewerThemeOverride: true
   }
-};
+} satisfies StrictDashboardConfig;
