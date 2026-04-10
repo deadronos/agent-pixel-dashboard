@@ -1,21 +1,12 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
-import { getFaceMood, getProviderPalette, getStatusLabel, type EntityStatus } from "./face.js";
-
-interface EntityState {
-  entityId: string;
-  source: string;
-  sourceHost: string;
-  displayName: string;
-  entityKind: string;
-  currentStatus: EntityStatus;
-  lastEventAt: string;
-  lastSummary?: string;
-  activityScore: number;
-}
+import { getFaceMood, getFaceShell, getStatusLabel, type DashboardEntity, type EntityStatus } from "./face.js";
+import type { ThemePreset, VisualRule } from "./dashboard-settings.js";
+import { resolveVisualProfile } from "./visual-profile.js";
 
 function drawPixelFace(
   canvas: HTMLCanvasElement,
-  entity: EntityState,
+  currentStatus: EntityStatus,
+  visualProfile: ReturnType<typeof resolveVisualProfile>,
   now: number
 ): void {
   const rect = canvas.getBoundingClientRect();
@@ -39,21 +30,23 @@ function drawPixelFace(
   context.clearRect(0, 0, width, height);
   context.imageSmoothingEnabled = false;
 
-  const palette = getProviderPalette(entity.source);
-  const mood = getFaceMood(entity.currentStatus);
+  const palette = visualProfile.palette;
+  const shell = getFaceShell(visualProfile.faceVariant);
+  const mood = getFaceMood(currentStatus);
   const grid = 16;
   const cell = Math.max(3, Math.floor(Math.min(width, height) / grid));
   const faceSize = cell * 12;
+  const motionScale = visualProfile.animationMode === "reduced" ? 0.35 : 1;
   const bob =
     mood.animation === "bounce"
-      ? Math.sin(now / 180) * cell * 0.28
+      ? Math.sin(now / 180) * cell * 0.28 * motionScale
       : mood.animation === "drift"
-        ? Math.sin(now / 420) * cell * 0.2
+        ? Math.sin(now / 420) * cell * 0.2 * motionScale
         : mood.animation === "float"
-          ? Math.sin(now / 320) * cell * 0.16
+          ? Math.sin(now / 320) * cell * 0.16 * motionScale
           : 0;
-  const glowPulse = mood.animation === "pulse" ? (Math.sin(now / 420) + 1) / 2 : 0.55;
-  const jitter = mood.animation === "glitch" ? (Math.sin(now / 40) > 0.8 ? cell * 0.2 : 0) : 0;
+  const glowPulse = mood.animation === "pulse" ? ((Math.sin(now / 420) + 1) / 2) * motionScale : 0.55;
+  const jitter = mood.animation === "glitch" ? (Math.sin(now / 40) > 0.8 ? cell * 0.2 * motionScale : 0) : 0;
   const x = Math.floor((width - faceSize) / 2 + jitter);
   const y = Math.floor((height - faceSize) / 2 + bob);
   const blink = Math.sin(now / 460) > 0.95;
@@ -68,17 +61,19 @@ function drawPixelFace(
   context.fillRect(x - cell, y - cell, faceSize + cell * 2, faceSize + cell * 2);
   context.globalAlpha = 1;
 
-  px(1, 1, 10, 10, palette.base);
+  for (const [pxX, pxY, pxW, pxH] of shell.outline) {
+    px(pxX, pxY, pxW, pxH, palette.shade);
+  }
+  for (const [pxX, pxY, pxW, pxH] of shell.fill) {
+    px(pxX, pxY, pxW, pxH, palette.base);
+  }
+
   px(2, 2, 8, 8, palette.glow);
-  px(0, 2, 1, 6, palette.shade);
-  px(11, 2, 1, 6, palette.shade);
-  px(2, 0, 6, 1, palette.shade);
-  px(2, 11, 6, 1, palette.shade);
   px(9, 1, 1, 1, palette.accent);
   px(1, 9, 1, 1, palette.accent);
 
-  const eyeColor = entity.currentStatus === "error" ? "#7a1010" : palette.line;
-  const cheekColor = entity.currentStatus === "error" ? "#f3a0a0" : palette.accent;
+  const eyeColor = currentStatus === "error" ? "#7a1010" : palette.line;
+  const cheekColor = currentStatus === "error" ? "#f3a0a0" : palette.accent;
 
   if (mood.eyes === "wide") {
     px(3, blink ? 4 : 3, 2, blink ? 1 : 2, eyeColor);
@@ -130,15 +125,38 @@ function drawPixelFace(
     px(1, 1, 1, 1, "#ffffff");
   }
 
-  if (entity.currentStatus === "sleepy") {
+  if (currentStatus === "sleepy") {
     px(10, 0, 1, 1, palette.line);
     px(9, -1, 1, 1, palette.line);
   }
 }
 
-export function AgentFaceCard({ entity }: { entity: EntityState }) {
+export function AgentFaceCard({
+  entity,
+  theme,
+  visualRules
+}: {
+  entity: DashboardEntity;
+  theme: ThemePreset;
+  visualRules: VisualRule[];
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const palette = useMemo(() => getProviderPalette(entity.source), [entity.source]);
+  const visualProfile = useMemo(
+    () =>
+      resolveVisualProfile(
+        {
+          entityId: entity.entityId,
+          source: entity.source,
+          entityKind: entity.entityKind,
+          currentStatus: entity.currentStatus
+        },
+        theme,
+        visualRules
+      ),
+    [entity.currentStatus, entity.entityId, entity.entityKind, entity.source, theme, visualRules]
+  );
+  const palette = visualProfile.palette;
+  const currentStatus = entity.currentStatus;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -148,14 +166,14 @@ export function AgentFaceCard({ entity }: { entity: EntityState }) {
 
     let frame = 0;
     const render = (now: number) => {
-      drawPixelFace(canvas, entity, now);
+      drawPixelFace(canvas, currentStatus, visualProfile, now);
       frame = window.requestAnimationFrame(render);
     };
     frame = window.requestAnimationFrame(render);
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [entity]);
+  }, [currentStatus, visualProfile]);
 
   return (
     <article

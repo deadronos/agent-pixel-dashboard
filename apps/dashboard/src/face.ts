@@ -9,11 +9,68 @@ export interface ProviderPalette {
   background: string;
 }
 
+export const namedPaletteIds = ["mint", "rose", "sky"] as const;
+
+export type NamedPaletteId = (typeof namedPaletteIds)[number];
+
+const namedPalettes: Record<NamedPaletteId, ProviderPalette> = {
+  mint: {
+    base: "hsl(162 70% 58%)",
+    accent: "hsl(181 84% 52%)",
+    glow: "hsl(166 94% 78%)",
+    shade: "hsl(164 42% 18%)",
+    line: "hsl(168 30% 12%)",
+    background: "linear-gradient(160deg, hsl(154 68% 94%), hsl(182 72% 84%))"
+  },
+  rose: {
+    base: "hsl(344 72% 64%)",
+    accent: "hsl(12 88% 58%)",
+    glow: "hsl(339 96% 82%)",
+    shade: "hsl(342 44% 20%)",
+    line: "hsl(341 32% 14%)",
+    background: "linear-gradient(160deg, hsl(338 88% 95%), hsl(18 76% 86%))"
+  },
+  sky: {
+    base: "hsl(204 74% 62%)",
+    accent: "hsl(221 90% 58%)",
+    glow: "hsl(197 96% 84%)",
+    shade: "hsl(210 44% 20%)",
+    line: "hsl(214 32% 14%)",
+    background: "linear-gradient(160deg, hsl(203 90% 95%), hsl(219 80% 86%))"
+  }
+};
+
+export function isNamedPaletteId(value: string): value is NamedPaletteId {
+  return (namedPaletteIds as readonly string[]).includes(value);
+}
+
 export interface FaceMood {
   eyes: "wide" | "calm" | "sleepy" | "closed" | "happy" | "error";
   mouth: "smile" | "soft" | "flat" | "open" | "frown";
   animation: "bounce" | "float" | "drift" | "pulse" | "glitch";
   sparkle: boolean;
+}
+
+export type FaceVariant = "rounded-bot" | "square-bot" | "soft-ghost" | "terminal-sprite";
+
+export interface FaceShell {
+  outline: Array<[number, number, number, number]>;
+  fill: Array<[number, number, number, number]>;
+}
+
+export interface DashboardEntity {
+  entityId: string;
+  source: string;
+  sourceHost: string;
+  displayName: string;
+  entityKind: string;
+  currentStatus: EntityStatus;
+  lastEventAt: string;
+  lastSummary?: string;
+  activityScore: number;
+  sessionId?: string;
+  parentEntityId?: string | null;
+  recentEvents?: string[];
 }
 
 function hashString(value: string): number {
@@ -38,6 +95,71 @@ export function getProviderPalette(provider: string): ProviderPalette {
     line: hsl(hue, 32, 14),
     background: `linear-gradient(160deg, ${hsl(hue, 88, 94)}, ${hsl((hue + 20) % 360, 78, 84)})`
   };
+}
+
+export function getNamedPalette(name: NamedPaletteId): ProviderPalette {
+  return namedPalettes[name];
+}
+
+export function getFaceShell(variant: FaceVariant): FaceShell {
+  switch (variant) {
+    case "square-bot":
+      return {
+        outline: [
+          [0, 0, 12, 1],
+          [0, 1, 1, 11],
+          [11, 1, 1, 11],
+          [0, 11, 12, 1]
+        ],
+        fill: [
+          [1, 1, 10, 10],
+          [2, 2, 8, 8]
+        ]
+      };
+    case "soft-ghost":
+      return {
+        outline: [
+          [2, 1, 8, 1],
+          [1, 2, 10, 7],
+          [2, 9, 8, 1]
+        ],
+        fill: [
+          [3, 2, 6, 6],
+          [2, 9, 1, 1],
+          [5, 9, 1, 1],
+          [8, 9, 1, 1]
+        ]
+      };
+    case "terminal-sprite":
+      return {
+        outline: [
+          [0, 0, 12, 1],
+          [0, 1, 1, 10],
+          [11, 1, 1, 10],
+          [0, 11, 12, 1],
+          [2, 2, 8, 1]
+        ],
+        fill: [
+          [1, 1, 10, 10],
+          [2, 2, 8, 8],
+          [3, 9, 6, 1]
+        ]
+      };
+    case "rounded-bot":
+    default:
+      return {
+        outline: [
+          [1, 0, 10, 1],
+          [0, 1, 1, 9],
+          [11, 1, 1, 9],
+          [1, 10, 10, 1]
+        ],
+        fill: [
+          [2, 1, 8, 9],
+          [3, 2, 6, 7]
+        ]
+      };
+  }
 }
 
 export function getFaceMood(status: EntityStatus): FaceMood {
@@ -68,4 +190,12 @@ export function getStatusFromTimestamp(timestamp: string): EntityStatus {
   if (ageMs <= 90_000) return "sleepy";
   if (ageMs <= 300_000) return "dormant";
   return "dormant";
+}
+
+export function resolveLiveStatus(currentStatus: EntityStatus | undefined, lastEventAt: string): EntityStatus {
+  if (currentStatus === "done" || currentStatus === "error") {
+    return currentStatus;
+  }
+
+  return getStatusFromTimestamp(lastEventAt);
 }

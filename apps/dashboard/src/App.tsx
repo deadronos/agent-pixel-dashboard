@@ -1,49 +1,53 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { AgentFaceCard } from "./AgentFaceCard.js";
-import { getStatusFromTimestamp, type EntityStatus } from "./face.js";
-
-interface EntityState {
-  entityId: string;
-  source: string;
-  sourceHost: string;
-  displayName: string;
-  entityKind: string;
-  sessionId?: string;
-  parentEntityId?: string | null;
-  currentStatus: EntityStatus;
-  lastEventAt: string;
-  lastSummary?: string;
-  activityScore: number;
-  recentEvents: string[];
-}
-
-function getGridColumns(count: number): number {
-  if (count <= 1) return 1;
-  if (count <= 2) return 2;
-  if (count <= 4) return 2;
-  if (count <= 6) return 3;
-  return 4;
-}
+import { SettingsPanel } from "./SettingsPanel.js";
+import { dashboardConfig } from "./dashboard-config.js";
+import { createResolvedSettings, type ViewerPreferences } from "./dashboard-settings.js";
+import {
+  getEmptyStateMessage,
+  getFilterOptions,
+  getGridColumns,
+  getVisibleEntities,
+  pruneViewerPreferencesToLiveOptions
+} from "./dashboard-view.js";
+import { resolveLiveStatus, type DashboardEntity } from "./face.js";
+import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
 
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
 const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
 
-function normalizeEntity(entity: EntityState): EntityState {
+function normalizeEntity(entity: DashboardEntity): DashboardEntity {
   return {
     ...entity,
-    currentStatus: getStatusFromTimestamp(entity.lastEventAt)
+    currentStatus: resolveLiveStatus(entity.currentStatus, entity.lastEventAt)
   };
 }
 
 export function App() {
-  const [entities, setEntities] = useState<EntityState[]>([]);
+  const [entities, setEntities] = useState<DashboardEntity[]>([]);
   const [connected, setConnected] = useState(false);
+  const [viewerPreferences, setViewerPreferences] = useState<ViewerPreferences>(() =>
+    loadViewerPreferences()
+  );
+  const filterOptions = useMemo(() => getFilterOptions(entities), [entities]);
+  const activeViewerPreferences = useMemo(
+    () => pruneViewerPreferencesToLiveOptions(viewerPreferences, filterOptions),
+    [viewerPreferences, filterOptions]
+  );
+  const settings = useMemo(
+    () => createResolvedSettings(dashboardConfig, activeViewerPreferences),
+    [activeViewerPreferences]
+  );
+
+  useEffect(() => {
+    saveViewerPreferences(activeViewerPreferences);
+  }, [activeViewerPreferences]);
 
   useEffect(() => {
     fetch(`${HUB_HTTP}/api/state`)
       .then((res) => res.json())
       .then((data) => {
-        setEntities(((data.entities ?? []) as EntityState[]).map(normalizeEntity));
+        setEntities(((data.entities ?? []) as DashboardEntity[]).map(normalizeEntity));
       })
       .catch(() => {
         // no-op for initial load
@@ -88,7 +92,7 @@ export function App() {
               entityKind: eventItem.entityKind,
               sessionId: eventItem.sessionId,
               parentEntityId: eventItem.parentEntityId,
-              currentStatus: getStatusFromTimestamp(eventItem.timestamp),
+              currentStatus: resolveLiveStatus(prev?.currentStatus, eventItem.timestamp),
               lastEventAt: eventItem.timestamp,
               lastSummary: eventItem.summary ?? prev?.lastSummary,
               activityScore: eventItem.activityScore ?? prev?.activityScore ?? 0.5,
@@ -117,26 +121,57 @@ export function App() {
     };
   }, []);
 
-  const sorted = useMemo(() => {
-    return [...entities].sort((left, right) => right.activityScore - left.activityScore);
-  }, [entities]);
-  const columns = getGridColumns(sorted.length);
+  const visibleEntities = useMemo(() => getVisibleEntities(entities, settings), [entities, settings]);
+  const columns = getGridColumns(visibleEntities.length, settings.layout.density);
+  const emptyMessage = getEmptyStateMessage(entities.length, visibleEntities.length);
 
   return (
-    <main className="dashboard">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">Live session mural</p>
-          <h1>Agent Watch</h1>
-        </div>
-        <div className={`badge ${connected ? "ok" : "warn"}`}>{connected ? "Live" : "Disconnected"}</div>
-      </header>
-      <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
-        {sorted.map((entity) => (
-          <AgentFaceCard key={entity.entityId} entity={entity} />
-        ))}
-        {sorted.length === 0 ? <p className="empty">No active entities yet. Start the collector to stream events.</p> : null}
-      </section>
+    <main
+      className="dashboard"
+      style={
+        {
+          "--page-bg": settings.theme.pageBackground,
+          "--panel-bg": settings.theme.panelBackground,
+          "--text-color": settings.theme.textColor,
+          "--muted-text-color": settings.theme.mutedTextColor
+        } as CSSProperties
+      }
+    >
+      <div className="dashboard__shell">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">Live session mural</p>
+            <h1>Agent Watch</h1>
+          </div>
+          <div className={`badge ${connected ? "ok" : "warn"}`}>{connected ? "Live" : "Disconnected"}</div>
+        </header>
+
+        {settings.ui.showSettingsPanel ? (
+          <SettingsPanel
+            config={dashboardConfig}
+            settings={settings}
+            sourceOptions={filterOptions.sources}
+            entityKindOptions={filterOptions.entityKinds}
+            viewerPreferences={activeViewerPreferences}
+            onChange={(patch) => setViewerPreferences((previous) => ({ ...previous, ...patch }))}
+            onReset={() => setViewerPreferences({})}
+          />
+        ) : null}
+
+        <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
+          {visibleEntities.map((entity) => (
+            <AgentFaceCard
+              key={entity.entityId}
+              entity={entity}
+              theme={settings.theme}
+              visualRules={settings.visualRules}
+            />
+          ))}
+          {visibleEntities.length === 0 ? (
+            <p className={`empty ${entities.length > 0 ? "empty--filtered" : ""}`}>{emptyMessage}</p>
+          ) : null}
+        </section>
+      </div>
     </main>
   );
 }
