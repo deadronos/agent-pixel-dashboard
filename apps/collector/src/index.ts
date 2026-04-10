@@ -54,10 +54,6 @@ async function main(): Promise<void> {
   const selectedPlugins = await loadPluginsFromSources(selectedSources);
 
   if (selectedPlugins.length === 0) {
-    // eslint-disable-next-line no-console
-    console.log(
-      `collector found no plugins to load (WATCH_SOURCES=${config.watchSources.join(", ")} discovered=${discoveredSources.join(", ")})`
-    );
     return;
   }
 
