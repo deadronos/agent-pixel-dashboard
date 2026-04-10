@@ -47,4 +47,30 @@ describe("buildSizedBatches", () => {
     expect(parsed.events).toHaveLength(1);
     expect(parsed.events[0].eventId).toBe("evt_1");
   });
+
+  it("includes an event when the batch size exactly matches maxBytes", () => {
+    const collectorId = "collector-a";
+    const event1 = mkEvent(1, 10);
+    const event2 = mkEvent(2, 10);
+
+    // Calculate maxBytes such that event1 AND event2 TOGETHER exactly match maxBytes
+    const twoEventsBatch = JSON.stringify({ collectorId, events: [event1, event2] });
+    const exactMaxBytes = Buffer.byteLength(twoEventsBatch, "utf8");
+
+    const events = [event1, event2];
+
+    const batches = buildSizedBatches(events, {
+      collectorId,
+      maxBytes: exactMaxBytes
+    });
+
+    // Both events should be in a single batch
+    expect(batches).toHaveLength(1);
+    expect(Buffer.byteLength(batches[0], "utf8")).toBe(exactMaxBytes);
+
+    const parsed = JSON.parse(batches[0]);
+    expect(parsed.events).toHaveLength(2);
+    expect(parsed.events[0].eventId).toBe("evt_1");
+    expect(parsed.events[1].eventId).toBe("evt_2");
+  });
 });

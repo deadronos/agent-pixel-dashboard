@@ -33,6 +33,8 @@ npm run dev:dashboard
 
 Open `http://localhost:5173`.
 
+Local overrides live in the repo-root `.env.local`, which is loaded by the hub, collector, and dashboard.
+
 ## Environment variables
 
 ### Hub

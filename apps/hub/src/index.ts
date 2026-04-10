@@ -1,9 +1,11 @@
+import "./env.js";
 import http from "node:http";
 import cors from "cors";
 import express from "express";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, WebSocket } from "ws";
 import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import { CassSearchClient } from "./cass-search.js";
+import { createConversationDetailHandler } from "./conversation-detail.js";
 import { applyEvent, computeStatus, type EntityState } from "./state.js";
 
 interface IngestBatchBody {
@@ -16,24 +18,46 @@ app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
 const authToken = process.env.HUB_AUTH_TOKEN ?? "dev-secret";
+const MAX_RECENT_EVENTS = 1000;
 const recentEventIds = new Set<string>();
-const recentEvents: NormalizedEvent[] = [];
+const recentEvents: (NormalizedEvent | undefined)[] = new Array(MAX_RECENT_EVENTS);
+let recentEventsIndex = 0;
+let recentEventsCount = 0;
 const entities = new Map<string, EntityState>();
 const cass = new CassSearchClient();
+
+function getRecentEventsSnapshot(): NormalizedEvent[] {
+  const events: NormalizedEvent[] = [];
+  const start = recentEventsCount === MAX_RECENT_EVENTS ? recentEventsIndex : 0;
+
+  for (let i = 0; i < recentEventsCount; i++) {
+    const event = recentEvents[(start + i) % MAX_RECENT_EVENTS];
+    if (event) {
+      events.push(event);
+    }
+  }
+
+  return events;
+}
 
 function rememberEvent(event: NormalizedEvent): boolean {
   if (recentEventIds.has(event.eventId)) {
     return false;
   }
-  recentEventIds.add(event.eventId);
-  recentEvents.push(event);
 
-  if (recentEvents.length > 1000) {
-    const removed = recentEvents.shift();
+  if (recentEventsCount === MAX_RECENT_EVENTS) {
+    const removed = recentEvents[recentEventsIndex];
     if (removed) {
       recentEventIds.delete(removed.eventId);
     }
+  } else {
+    recentEventsCount++;
   }
+
+  recentEvents[recentEventsIndex] = event;
+  recentEventIds.add(event.eventId);
+  recentEventsIndex = (recentEventsIndex + 1) % MAX_RECENT_EVENTS;
+
   return true;
 }
 
@@ -51,14 +75,18 @@ const wss = new WebSocketServer({ server, path: "/ws" });
 function broadcast(payload: unknown): void {
   const encoded = JSON.stringify(payload);
   for (const client of wss.clients) {
-    if (client.readyState === 1) {
-      client.send(encoded);
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(encoded);
+      } catch {
+        // Ignore individual socket failures and keep broadcasting.
+      }
     }
   }
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, entities: entities.size, recentEvents: recentEvents.length });
+  res.json({ ok: true, entities: entities.size, recentEvents: recentEventsCount });
 });
 
 app.post("/api/events/batch", (req, res) => {
@@ -68,8 +96,13 @@ app.post("/api/events/batch", (req, res) => {
   }
 
   const body = req.body as IngestBatchBody;
-  const incoming = body.events ?? [];
+  const incoming = Array.isArray(body.events) ? body.events : null;
+  if (incoming === null) {
+    res.status(400).json({ error: "invalid_events" });
+    return;
+  }
   const accepted: NormalizedEvent[] = [];
+  let rejected = 0;
 
   for (const entry of incoming) {
     try {
@@ -81,6 +114,7 @@ app.post("/api/events/batch", (req, res) => {
       const previous = entities.get(event.entityId);
       entities.set(event.entityId, applyEvent(previous, event));
     } catch {
+      rejected++;
       // Keep ingest resilient and skip invalid rows.
     }
   }
@@ -89,12 +123,12 @@ app.post("/api/events/batch", (req, res) => {
     broadcast({ type: "events", events: accepted });
   }
 
-  res.json({ accepted: accepted.length });
+  res.json({ accepted: accepted.length, rejected });
 });
 
-app.get("/api/state", (_req, res) => {
+app.get("/api/state", (req, res) => {
   const now = new Date();
-  const includeDormant = String(_req.query.includeDormant ?? "0") === "1";
+  const includeDormant = String(req.query.includeDormant ?? "0") === "1";
   const state = [...entities.values()].map((entity) => ({
     ...entity,
     currentStatus: computeStatus(entity, now)
@@ -113,8 +147,16 @@ app.get("/api/events/recent", (req, res) => {
 
   const limit = Number(req.query.limit ?? 100);
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
-  res.json({ events: recentEvents.slice(-safeLimit) });
+  res.json({ events: getRecentEventsSnapshot().slice(-safeLimit) });
 });
+
+app.get(
+  "/api/entity-detail",
+  createConversationDetailHandler({
+    entities,
+    recentEvents: getRecentEventsSnapshot
+  })
+);
 
 app.get("/api/search/sessions", async (req, res) => {
   const query = String(req.query.q ?? "").trim();
