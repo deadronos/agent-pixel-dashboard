@@ -18,28 +18,46 @@ app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
 const authToken = process.env.HUB_AUTH_TOKEN ?? "dev-secret";
-if (process.env.HUB_AUTH_TOKEN === undefined) {
-  // eslint-disable-next-line no-console
-  console.warn("HUB_AUTH_TOKEN is unset; defaulting to dev-secret");
-}
+const MAX_RECENT_EVENTS = 1000;
 const recentEventIds = new Set<string>();
-const recentEvents: NormalizedEvent[] = [];
+const recentEvents: (NormalizedEvent | undefined)[] = new Array(MAX_RECENT_EVENTS);
+let recentEventsIndex = 0;
+let recentEventsCount = 0;
 const entities = new Map<string, EntityState>();
 const cass = new CassSearchClient();
+
+function getRecentEventsSnapshot(): NormalizedEvent[] {
+  const events: NormalizedEvent[] = [];
+  const start = recentEventsCount === MAX_RECENT_EVENTS ? recentEventsIndex : 0;
+
+  for (let i = 0; i < recentEventsCount; i++) {
+    const event = recentEvents[(start + i) % MAX_RECENT_EVENTS];
+    if (event) {
+      events.push(event);
+    }
+  }
+
+  return events;
+}
 
 function rememberEvent(event: NormalizedEvent): boolean {
   if (recentEventIds.has(event.eventId)) {
     return false;
   }
-  recentEventIds.add(event.eventId);
-  recentEvents.push(event);
 
-  if (recentEvents.length > 1000) {
-    const removed = recentEvents.shift();
+  if (recentEventsCount === MAX_RECENT_EVENTS) {
+    const removed = recentEvents[recentEventsIndex];
     if (removed) {
       recentEventIds.delete(removed.eventId);
     }
+  } else {
+    recentEventsCount++;
   }
+
+  recentEvents[recentEventsIndex] = event;
+  recentEventIds.add(event.eventId);
+  recentEventsIndex = (recentEventsIndex + 1) % MAX_RECENT_EVENTS;
+
   return true;
 }
 
@@ -68,7 +86,7 @@ function broadcast(payload: unknown): void {
 }
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, entities: entities.size, recentEvents: recentEvents.length });
+  res.json({ ok: true, entities: entities.size, recentEvents: recentEventsCount });
 });
 
 app.post("/api/events/batch", (req, res) => {
@@ -124,16 +142,14 @@ app.get("/api/state", (req, res) => {
 app.get("/api/events/recent", (req, res) => {
   const limit = Number(req.query.limit ?? 100);
   const safeLimit = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 500) : 100;
-  res.json({
-    events: [...recentEvents].slice(-safeLimit).reverse()
-  });
+  res.json({ events: getRecentEventsSnapshot().slice(-safeLimit) });
 });
 
 app.get(
   "/api/entity-detail",
   createConversationDetailHandler({
     entities,
-    recentEvents
+    recentEvents: getRecentEventsSnapshot
   })
 );
 

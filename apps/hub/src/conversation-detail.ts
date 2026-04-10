@@ -170,7 +170,13 @@ export function getConversationDetail(query: ConversationDetailQuery, ctx: Conve
   return resolveByEntity(entityId, ctx, limit);
 }
 
-export function createConversationDetailHandler(opts: { entities: Map<string, EntityState>; recentEvents: NormalizedEvent[] }): RequestHandler {
+type RecentEventsSource = NormalizedEvent[] | (() => NormalizedEvent[]);
+
+function resolveRecentEvents(source: RecentEventsSource): NormalizedEvent[] {
+  return typeof source === "function" ? source() : source;
+}
+
+export function createConversationDetailHandler(opts: { entities: Map<string, EntityState>; recentEvents: RecentEventsSource }): RequestHandler {
   return async (req, res) => {
     const source = normalizeQueryText(req.query.source);
     const sessionId = normalizeQueryText(req.query.sessionId);
@@ -189,7 +195,7 @@ export function createConversationDetailHandler(opts: { entities: Map<string, En
       { source, sessionId, entityId, limit: req.query.limit },
       {
         entities: opts.entities,
-        recentEvents: opts.recentEvents,
+        recentEvents: resolveRecentEvents(opts.recentEvents),
         now: new Date()
       }
     );
