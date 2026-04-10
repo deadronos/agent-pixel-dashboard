@@ -133,12 +133,18 @@ function drawPixelFace(
 
 export function AgentFaceCard({
   entity,
+  groupCount,
   theme,
-  visualRules
+  visualRules,
+  selected = false,
+  onClick
 }: {
   entity: DashboardEntity;
+  groupCount: number;
   theme: ThemePreset;
   visualRules: VisualRule[];
+  selected?: boolean;
+  onClick?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const visualProfile = useMemo(
@@ -176,8 +182,11 @@ export function AgentFaceCard({
   }, [currentStatus, visualProfile]);
 
   return (
-    <article
-      className={`face-card ${entity.currentStatus}`}
+    <button
+      type="button"
+      className={`face-card${selected ? " selected" : ""} ${entity.currentStatus}`}
+      aria-pressed={selected}
+      onClick={onClick}
       style={
         {
           "--card-bg": palette.background,
@@ -189,7 +198,10 @@ export function AgentFaceCard({
     >
       <div className="face-card__meta face-card__meta--top">
         <span className="face-card__name">{entity.displayName}</span>
-        <span className="face-card__status">{getStatusLabel(entity.currentStatus)}</span>
+        <span className="face-card__status">
+          {getStatusLabel(entity.currentStatus)}
+          {groupCount > 1 ? <span className="face-card__count">{groupCount} linked</span> : null}
+        </span>
       </div>
       <div className="face-card__canvas-wrap">
         <canvas ref={canvasRef} className="face-card__canvas" />
@@ -200,6 +212,6 @@ export function AgentFaceCard({
           {entity.source} on {entity.sourceHost}
         </span>
       </div>
-    </article>
+    </button>
   );
 }
