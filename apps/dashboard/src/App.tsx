@@ -1,37 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { AgentFaceCard } from "./AgentFaceCard.js";
 import { dashboardConfig } from "./dashboard-config.js";
 import { createResolvedSettings } from "./dashboard-settings.js";
 import { getGridColumns, getVisibleEntities } from "./dashboard-view.js";
-import { getStatusFromTimestamp, type EntityStatus } from "./face.js";
-
-interface EntityState {
-  entityId: string;
-  source: string;
-  sourceHost: string;
-  displayName: string;
-  entityKind: string;
-  sessionId?: string;
-  parentEntityId?: string | null;
-  currentStatus: EntityStatus;
-  lastEventAt: string;
-  lastSummary?: string;
-  activityScore: number;
-  recentEvents: string[];
-}
+import { resolveLiveStatus, type DashboardEntity } from "./face.js";
 
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
 const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
 
-function normalizeEntity(entity: EntityState): EntityState {
+function normalizeEntity(entity: DashboardEntity): DashboardEntity {
   return {
     ...entity,
-    currentStatus: getStatusFromTimestamp(entity.lastEventAt)
+    currentStatus: resolveLiveStatus(entity.currentStatus, entity.lastEventAt)
   };
 }
 
 export function App() {
-  const [entities, setEntities] = useState<EntityState[]>([]);
+  const [entities, setEntities] = useState<DashboardEntity[]>([]);
   const [connected, setConnected] = useState(false);
   const settings = useMemo(() => createResolvedSettings(dashboardConfig, {}), []);
 
@@ -39,7 +24,7 @@ export function App() {
     fetch(`${HUB_HTTP}/api/state`)
       .then((res) => res.json())
       .then((data) => {
-        setEntities(((data.entities ?? []) as EntityState[]).map(normalizeEntity));
+        setEntities(((data.entities ?? []) as DashboardEntity[]).map(normalizeEntity));
       })
       .catch(() => {
         // no-op for initial load
@@ -84,7 +69,7 @@ export function App() {
               entityKind: eventItem.entityKind,
               sessionId: eventItem.sessionId,
               parentEntityId: eventItem.parentEntityId,
-              currentStatus: getStatusFromTimestamp(eventItem.timestamp),
+              currentStatus: resolveLiveStatus(prev?.currentStatus, eventItem.timestamp),
               lastEventAt: eventItem.timestamp,
               lastSummary: eventItem.summary ?? prev?.lastSummary,
               activityScore: eventItem.activityScore ?? prev?.activityScore ?? 0.5,
@@ -117,7 +102,17 @@ export function App() {
   const columns = getGridColumns(visibleEntities.length, settings.layout.density);
 
   return (
-    <main className="dashboard">
+    <main
+      className="dashboard"
+      style={
+        {
+          "--page-bg": settings.theme.pageBackground,
+          "--panel-bg": settings.theme.panelBackground,
+          "--text-color": settings.theme.textColor,
+          "--muted-text-color": settings.theme.mutedTextColor
+        } as CSSProperties
+      }
+    >
       <header className="topbar">
         <div>
           <p className="eyebrow">Live session mural</p>
@@ -127,7 +122,7 @@ export function App() {
       </header>
       <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
         {visibleEntities.map((entity) => (
-          <AgentFaceCard key={entity.entityId} entity={entity} />
+          <AgentFaceCard key={entity.entityId} entity={entity} theme={settings.theme} visualRules={settings.visualRules} />
         ))}
         {visibleEntities.length === 0 ? <p className="empty">No active entities yet. Start the collector to stream events.</p> : null}
       </section>

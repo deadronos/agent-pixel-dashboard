@@ -5,6 +5,13 @@
     radial-gradient(circle at 20% 15%, rgba(255, 247, 186, 0.88), transparent 28%),
     radial-gradient(circle at 80% 10%, rgba(126, 180, 255, 0.5), transparent 24%),
     linear-gradient(180deg, #fbf7ef 0%, #e9f0ff 48%, #dde8ff 100%);
+  --page-bg:
+    radial-gradient(circle at 20% 15%, rgba(255, 247, 186, 0.88), transparent 28%),
+    radial-gradient(circle at 80% 10%, rgba(126, 180, 255, 0.5), transparent 24%),
+    linear-gradient(180deg, #fbf7ef 0%, #e9f0ff 48%, #dde8ff 100%);
+  --panel-bg: rgba(255, 255, 255, 0.72);
+  --text-color: #132032;
+  --muted-text-color: rgba(19, 32, 50, 0.68);
 }
 
 * {
@@ -14,11 +21,14 @@
 body {
   margin: 0;
   min-height: 100vh;
+  color: var(--text-color);
+  background: var(--page-bg);
 }
 
 .dashboard {
   min-height: 100vh;
   padding: 1.25rem;
+  color: var(--text-color);
 }
 
 .topbar {
@@ -27,6 +37,11 @@ body {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1.25rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(19, 32, 50, 0.08);
+  border-radius: 1.2rem;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
 }
 
 .topbar h1 {
@@ -42,7 +57,7 @@ body {
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(19, 32, 50, 0.68);
+  color: var(--muted-text-color);
 }
 
 .badge {
@@ -77,6 +92,7 @@ body {
   border: 1px solid rgba(19, 32, 50, 0.1);
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.04)),
+    var(--panel-bg),
     var(--card-bg);
   box-shadow:
     0 24px 42px rgba(28, 50, 87, 0.14),
@@ -146,7 +162,7 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.95rem 1rem;
-  color: color-mix(in srgb, var(--card-line) 88%, white);
+  color: color-mix(in srgb, var(--card-line) 88%, var(--text-color));
   pointer-events: none;
 }
 
@@ -200,7 +216,7 @@ body {
   margin: 1rem 0;
   padding: 1rem 1.1rem;
   border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--panel-bg);
   border: 1px solid rgba(19, 32, 50, 0.08);
 }
 

@@ -51,6 +51,28 @@ export interface FaceMood {
   sparkle: boolean;
 }
 
+export type FaceVariant = "rounded-bot" | "square-bot" | "soft-ghost" | "terminal-sprite";
+
+export interface FaceShell {
+  outline: Array<[number, number, number, number]>;
+  fill: Array<[number, number, number, number]>;
+}
+
+export interface DashboardEntity {
+  entityId: string;
+  source: string;
+  sourceHost: string;
+  displayName: string;
+  entityKind: string;
+  currentStatus: EntityStatus;
+  lastEventAt: string;
+  lastSummary?: string;
+  activityScore: number;
+  sessionId?: string;
+  parentEntityId?: string | null;
+  recentEvents?: string[];
+}
+
 function hashString(value: string): number {
   let hash = 0;
   for (const char of value) {
@@ -77,6 +99,67 @@ export function getProviderPalette(provider: string): ProviderPalette {
 
 export function getNamedPalette(name: NamedPaletteId): ProviderPalette {
   return namedPalettes[name];
+}
+
+export function getFaceShell(variant: FaceVariant): FaceShell {
+  switch (variant) {
+    case "square-bot":
+      return {
+        outline: [
+          [0, 0, 12, 1],
+          [0, 1, 1, 11],
+          [11, 1, 1, 11],
+          [0, 11, 12, 1]
+        ],
+        fill: [
+          [1, 1, 10, 10],
+          [2, 2, 8, 8]
+        ]
+      };
+    case "soft-ghost":
+      return {
+        outline: [
+          [2, 1, 8, 1],
+          [1, 2, 10, 7],
+          [2, 9, 8, 1]
+        ],
+        fill: [
+          [3, 2, 6, 6],
+          [2, 9, 1, 1],
+          [5, 9, 1, 1],
+          [8, 9, 1, 1]
+        ]
+      };
+    case "terminal-sprite":
+      return {
+        outline: [
+          [0, 0, 12, 1],
+          [0, 1, 1, 10],
+          [11, 1, 1, 10],
+          [0, 11, 12, 1],
+          [2, 2, 8, 1]
+        ],
+        fill: [
+          [1, 1, 10, 10],
+          [2, 2, 8, 8],
+          [3, 9, 6, 1]
+        ]
+      };
+    case "rounded-bot":
+    default:
+      return {
+        outline: [
+          [1, 0, 10, 1],
+          [0, 1, 1, 9],
+          [11, 1, 1, 9],
+          [1, 10, 10, 1]
+        ],
+        fill: [
+          [2, 1, 8, 9],
+          [3, 2, 6, 7]
+        ]
+      };
+  }
 }
 
 export function getFaceMood(status: EntityStatus): FaceMood {
@@ -107,4 +190,12 @@ export function getStatusFromTimestamp(timestamp: string): EntityStatus {
   if (ageMs <= 90_000) return "sleepy";
   if (ageMs <= 300_000) return "dormant";
   return "dormant";
+}
+
+export function resolveLiveStatus(currentStatus: EntityStatus | undefined, lastEventAt: string): EntityStatus {
+  if (currentStatus === "done" || currentStatus === "error") {
+    return currentStatus;
+  }
+
+  return getStatusFromTimestamp(lastEventAt);
 }

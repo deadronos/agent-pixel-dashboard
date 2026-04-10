@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   getFaceMood,
+  getFaceShell,
   getNamedPalette,
   getProviderPalette,
   getStatusFromTimestamp,
   getStatusLabel,
   isNamedPaletteId,
+  resolveLiveStatus,
   namedPaletteIds
 } from "./face.js";
 
@@ -62,6 +64,18 @@ describe("getFaceMood", () => {
   });
 });
 
+describe("getFaceShell", () => {
+  it("returns distinct shell layouts for renderer variants", () => {
+    expect(getFaceShell("rounded-bot")).not.toEqual(getFaceShell("terminal-sprite"));
+    expect(getFaceShell("soft-ghost")).toEqual(
+      expect.objectContaining({
+        outline: expect.any(Array),
+        fill: expect.any(Array)
+      })
+    );
+  });
+});
+
 describe("getStatusLabel", () => {
   it("returns readable status labels", () => {
     expect(getStatusLabel("idle")).toBe("Idle");
@@ -76,5 +90,16 @@ describe("getStatusFromTimestamp", () => {
 
   it("marks older timestamps as dormant", () => {
     expect(getStatusFromTimestamp(new Date(Date.now() - 10 * 60_000).toISOString())).toBe("dormant");
+  });
+});
+
+describe("resolveLiveStatus", () => {
+  it("preserves terminal statuses during refresh", () => {
+    expect(resolveLiveStatus("done", new Date(Date.now() - 10 * 60_000).toISOString())).toBe("done");
+    expect(resolveLiveStatus("error", new Date(Date.now() - 10 * 60_000).toISOString())).toBe("error");
+  });
+
+  it("recomputes nonterminal statuses from the latest timestamp", () => {
+    expect(resolveLiveStatus("idle", new Date().toISOString())).toBe("active");
   });
 });
