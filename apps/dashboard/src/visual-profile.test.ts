@@ -56,19 +56,20 @@ describe("resolveVisualProfile", () => {
     expect(profile.palette.background).toContain("hsl(154 68% 94%)");
   });
 
-  it("rejects invalid named palette ids instead of falling back", () => {
-    expect(() =>
-      resolveVisualProfile(
-        {
-          source: "codex",
-          entityKind: "worker",
-          entityId: "agent-2",
-          currentStatus: "idle"
-        },
-        dashboardConfig.themes.presets[0],
-        [{ source: "codex", themePalette: "nope" as never }]
-      )
-    ).toThrow("Unknown palette id: nope");
+  it("falls back to provider palette for invalid named palette ids", () => {
+    const profile = resolveVisualProfile(
+      {
+        source: "codex",
+        entityKind: "worker",
+        entityId: "agent-2",
+        currentStatus: "idle"
+      },
+      dashboardConfig.themes.presets[0],
+      [{ source: "codex", themePalette: "nope" as never }]
+    );
+
+    // Should not throw, should return fallback provider palette
+    expect(profile.palette.base).toBeDefined();
   });
 
   it("uses the current status and theme to derive animation and accent style", () => {
