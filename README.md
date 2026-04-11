@@ -35,6 +35,10 @@ Open `http://localhost:5173`.
 
 Local overrides live in the repo-root `.env.local`, which is loaded by the hub, collector, and dashboard.
 
+If you run the dashboard on a different host or port than the hub, set `HUB_CORS_ORIGINS` on the hub
+to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_HUB_HTTP` unless
+`VITE_HUB_WS` is set explicitly.
+
 ## Environment variables
 
 ### Hub
@@ -42,6 +46,8 @@ Local overrides live in the repo-root `.env.local`, which is loaded by the hub, 
 - `HUB_PORT` (default: `3030`)
 - `HUB_AUTH_TOKEN` (default: `dev-secret`)
 - `CASS_BIN` (default: `cass`)
+- `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; if unset, the hub
+  reflects the request origin for development)
 
 ### Collector
 

@@ -17,12 +17,13 @@ import {
   getVisibleEntityGroups,
   pruneViewerPreferencesToLiveOptions
 } from "./dashboard-view.js";
+import { buildHubWebSocketUrl } from "./hub-url.js";
 import { toggleSelectedGroupId } from "./conversation-selection.js";
 import { resolveLiveStatus, type DashboardEntity } from "./face.js";
 import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
 
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
-const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
+const HUB_WS = import.meta.env.VITE_HUB_WS ?? buildHubWebSocketUrl(HUB_HTTP);
 
 function normalizeEntity(entity: DashboardEntity): DashboardEntity {
   return {
