@@ -7,6 +7,7 @@ export interface DashboardEntity {
   source: string;
   entityKind: string;
   sessionId?: string;
+  groupKey?: string;
   currentStatus: EntityStatus;
   lastEventAt: string;
   activityScore: number;
@@ -206,7 +207,7 @@ function getSortableTimestamp(timestamp: string): number {
 }
 
 function getGroupingKey(entity: DashboardEntity): string {
-  const stableId = entity.sessionId?.trim() || entity.entityId;
+  const stableId = entity.groupKey?.trim() || entity.sessionId?.trim() || entity.entityId;
   return `${entity.source}|${stableId}`;
 }
 

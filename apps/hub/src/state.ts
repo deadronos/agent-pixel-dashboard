@@ -10,6 +10,7 @@ export interface EntityState {
   entityKind: string;
   sessionId?: string;
   parentEntityId?: string | null;
+  groupKey?: string;
   currentStatus: EntityStatus;
   lastEventAt: string;
   lastSummary?: string;
@@ -70,6 +71,7 @@ function statusFromEvent(event: NormalizedEvent): EntityStatus {
 export function applyEvent(previous: EntityState | undefined, event: NormalizedEvent): EntityState {
   const status = statusFromEvent(event);
   const recentEvents = previous ? [...previous.recentEvents, event.eventId].slice(-MAX_RECENT_EVENTS) : [event.eventId];
+  const groupKey = typeof event.meta?.groupKey === "string" ? event.meta.groupKey : previous?.groupKey;
 
   return {
     entityId: event.entityId,
@@ -79,6 +81,7 @@ export function applyEvent(previous: EntityState | undefined, event: NormalizedE
     entityKind: event.entityKind,
     sessionId: event.sessionId,
     parentEntityId: event.parentEntityId,
+    groupKey,
     currentStatus: status,
     lastEventAt: event.timestamp,
     lastSummary: event.summary ?? previous?.lastSummary,

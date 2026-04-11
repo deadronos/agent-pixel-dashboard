@@ -96,6 +96,7 @@ function parseGeminiSessionFile(
     sequence,
     meta: {
       filePath,
+      groupKey: detail || undefined,
       toolName:
         lastToolCall && Array.isArray(lastToolCall.toolCalls)
           ? getString((lastToolCall.toolCalls[0] as Record<string, unknown>)?.name)

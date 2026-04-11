@@ -70,6 +70,7 @@ export interface DashboardEntity {
   activityScore: number;
   sessionId?: string;
   parentEntityId?: string | null;
+  groupKey?: string;
   recentEvents?: string[];
 }
 

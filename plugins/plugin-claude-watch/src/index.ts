@@ -26,6 +26,18 @@ function getString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function getClaudeProjectKey(filePath: string): string | undefined {
+  const normalized = filePath.replace(/\\/g, "/");
+  const marker = "/.claude/projects/";
+  const markerIndex = normalized.indexOf(marker);
+  if (markerIndex < 0) {
+    return undefined;
+  }
+
+  const projectSegment = normalized.slice(markerIndex + marker.length).split("/")[0]?.trim();
+  return projectSegment ? projectSegment : undefined;
+}
+
 function parseRecord(
   sourceHost: string,
   filePath: string,
@@ -90,6 +102,7 @@ function parseRecord(
     sequence,
     meta: {
       filePath,
+      groupKey: getClaudeProjectKey(filePath),
       toolName: getString(record.toolName) || getString(record.tool_name),
       rawType: getString(record.type)
     }

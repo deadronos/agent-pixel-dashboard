@@ -179,6 +179,39 @@ describe("getVisibleEntityGroups", () => {
     expect(result[0].representative.entityId).toBe("turn-1");
   });
 
+  it("collapses related entities that share a source group key", () => {
+    const result = getVisibleEntityGroups(
+      [
+        {
+          entityId: "openclaw:session:alpha-1",
+          sessionId: "alpha-1",
+          groupKey: "clawson",
+          source: "openclaw",
+          entityKind: "session",
+          currentStatus: "active",
+          lastEventAt: "2026-04-10T10:00:00.000Z",
+          activityScore: 0.9
+        },
+        {
+          entityId: "openclaw:session:alpha-2",
+          sessionId: "alpha-2",
+          groupKey: "clawson",
+          source: "openclaw",
+          entityKind: "session",
+          currentStatus: "idle",
+          lastEventAt: "2026-04-10T10:02:00.000Z",
+          activityScore: 0.7
+        }
+      ],
+      recentSettings
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].groupId).toBe("openclaw|clawson");
+    expect(result[0].memberCount).toBe(2);
+    expect(result[0].representative.entityId).toBe("openclaw:session:alpha-2");
+  });
+
   it("keeps a group visible when any member matches the entity-kind filter", () => {
     const result = getVisibleEntityGroups(
       [

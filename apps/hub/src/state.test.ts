@@ -26,10 +26,11 @@ function sampleEvent(overrides: Partial<NormalizedEvent> = {}): NormalizedEvent 
 
 describe("state projection", () => {
   it("applies event into state", () => {
-    const state = applyEvent(undefined, sampleEvent());
+    const state = applyEvent(undefined, sampleEvent({ meta: { groupKey: "workspace-a" } }));
     expect(state.entityId).toBe("codex:session:abc123");
     expect(state.currentStatus).toBe("active");
     expect(state.recentEvents.length).toBe(1);
+    expect(state.groupKey).toBe("workspace-a");
   });
 
   it("decays status over inactivity windows", () => {

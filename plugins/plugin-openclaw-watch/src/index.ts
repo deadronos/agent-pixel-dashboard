@@ -97,6 +97,7 @@ function parseRecord(
     meta: {
       filePath,
       agentId: agentId || undefined,
+      groupKey: agentId || undefined,
       toolName: getString(record.toolName) || getString(record.tool_name) || getString(message?.name),
       rawType: getString(record.type)
     }
