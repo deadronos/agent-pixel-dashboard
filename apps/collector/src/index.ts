@@ -13,6 +13,7 @@ import {
 
 const config = loadConfig(process.env);
 
+const MAX_QUEUE_SIZE = 10_000;
 const queue: NormalizedEvent[] = [];
 const handles: WatchHandle[] = [];
 
@@ -60,7 +61,7 @@ async function main(): Promise<void> {
   for (const plugin of selectedPlugins) {
     const roots = await plugin.discover({
       host: config.hostName,
-      configuredRoots: plugin.source === "codex" ? config.codexRoots : [],
+      configuredRoots: config.codexRoots,
       env: process.env
     });
 
@@ -74,6 +75,9 @@ async function main(): Promise<void> {
       const handle = await plugin.watch(root, {
         onEvent: (event: NormalizedEvent) => {
           try {
+            if (queue.length >= MAX_QUEUE_SIZE) {
+              queue.shift();
+            }
             queue.push(parseNormalizedEvent(event));
           } catch {
             // keep queue robust
@@ -105,8 +109,11 @@ async function main(): Promise<void> {
     await Promise.all(handles.map((handle) => handle.close()));
     try {
       await flushQueue();
-    } finally {
       process.exit(0);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("flush failed during shutdown:", error instanceof Error ? error.message : String(error));
+      process.exit(1);
     }
   };
 

@@ -6,7 +6,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import { CassSearchClient } from "./cass-search.js";
 import { createConversationDetailHandler } from "./conversation-detail.js";
-import { applyEvent, computeStatus, type EntityState } from "./state.js";
+import { applyEvent, computeStatus, expireEntities, type EntityState } from "./state.js";
 
 interface IngestBatchBody {
   collectorId?: string;
@@ -14,10 +14,15 @@ interface IngestBatchBody {
 }
 
 const app = express();
-app.use(cors());
+const corsOrigins = (process.env.HUB_CORS_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
+const corsOptions = corsOrigins.length > 0 ? { origin: corsOrigins } : { origin: false };
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "2mb" }));
 
-const authToken = process.env.HUB_AUTH_TOKEN ?? "dev-secret";
+const authToken = process.env.HUB_AUTH_TOKEN;
+if (!authToken) {
+  throw new Error("HUB_AUTH_TOKEN environment variable is required");
+}
 const MAX_RECENT_EVENTS = 1000;
 const recentEventIds = new Set<string>();
 const recentEvents: (NormalizedEvent | undefined)[] = new Array(MAX_RECENT_EVENTS);
@@ -25,6 +30,11 @@ let recentEventsIndex = 0;
 let recentEventsCount = 0;
 const entities = new Map<string, EntityState>();
 const cass = new CassSearchClient();
+
+// Expire done/error entities every minute
+setInterval(() => {
+  expireEntities(entities, new Date());
+}, 60_000);
 
 function getRecentEventsSnapshot(): NormalizedEvent[] {
   const events: NormalizedEvent[] = [];
@@ -78,8 +88,9 @@ function broadcast(payload: unknown): void {
     if (client.readyState === WebSocket.OPEN) {
       try {
         client.send(encoded);
-      } catch {
-        // Ignore individual socket failures and keep broadcasting.
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("WebSocket send failed:", error instanceof Error ? error.message : String(error));
       }
     }
   }
@@ -181,7 +192,7 @@ app.get("/api/search/sessions", async (req, res) => {
     const result = await cass.search(query, safeLimit);
     res.json(result);
   } catch (error) {
-    res.status(500).json({
+    res.status(503).json({
       error: "search_failed",
       message: error instanceof Error ? error.message : "unknown error"
     });

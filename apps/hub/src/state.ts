@@ -22,6 +22,7 @@ const IDLE_WINDOW_MS = 30_000;
 const SLEEPY_WINDOW_MS = 90_000;
 const DORMANT_WINDOW_MS = 300_000;
 const MAX_RECENT_EVENTS = 25;
+const ENTITY_EXPIRE_MS = 3_600_000; // 1 hour for done/error entities
 
 export function computeStatus(state: Pick<EntityState, "lastEventAt" | "currentStatus">, now: Date): EntityStatus {
   if (state.currentStatus === "done" || state.currentStatus === "error") {
@@ -42,6 +43,18 @@ export function computeStatus(state: Pick<EntityState, "lastEventAt" | "currentS
     return "dormant";
   }
   return "dormant";
+}
+
+export function expireEntities(entities: Map<string, EntityState>, now: Date): void {
+  const cutoff = now.getTime() - ENTITY_EXPIRE_MS;
+  for (const [entityId, entity] of entities) {
+    if (entity.currentStatus === "done" || entity.currentStatus === "error") {
+      const entityTime = new Date(entity.lastEventAt).getTime();
+      if (entityTime < cutoff) {
+        entities.delete(entityId);
+      }
+    }
+  }
 }
 
 function statusFromEvent(event: NormalizedEvent): EntityStatus {

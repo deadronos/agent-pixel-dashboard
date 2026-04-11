@@ -156,7 +156,13 @@ export class OpenClawWatchPlugin implements CollectorPlugin {
         const previousOffset = offsets.get(filePath) ?? 0;
         const nextOffset = stat.size < previousOffset ? 0 : previousOffset;
 
-        const handle = await fs.open(filePath, "r");
+        let handle: import("node:fs/promises").FileHandle | undefined;
+        try {
+          handle = await fs.open(filePath, "r");
+        } catch (error) {
+          ctx.onError(error as Error);
+          return;
+        }
         try {
           const length = stat.size - nextOffset;
           if (length <= 0) {

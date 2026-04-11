@@ -75,7 +75,7 @@ function resolvePalette(themePalette: VisualRule["themePalette"] | undefined, fa
   }
 
   if (!isNamedPaletteId(themePalette)) {
-    throw new Error(`Unknown palette id: ${themePalette}`);
+    return getProviderPalette(fallbackKey);
   }
 
   return getNamedPalette(themePalette);
