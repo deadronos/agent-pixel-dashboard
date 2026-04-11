@@ -36,7 +36,7 @@ function drawPixelFace(
   const grid = 16;
   const cell = Math.max(3, Math.floor(Math.min(width, height) / grid));
   const faceSize = cell * 12;
-  const motionScale = visualProfile.animationMode === "reduced" ? 0.35 : 1;
+  const motionScale = visualProfile.animationMode === "reduced" ? 0.18 : 1;
   const bob =
     mood.animation === "bounce"
       ? Math.sin(now / 180) * cell * 0.28 * motionScale
@@ -45,7 +45,12 @@ function drawPixelFace(
         : mood.animation === "float"
           ? Math.sin(now / 320) * cell * 0.16 * motionScale
           : 0;
-  const glowPulse = mood.animation === "pulse" ? ((Math.sin(now / 420) + 1) / 2) * motionScale : 0.55;
+  const glowPulse =
+    visualProfile.artStyleMode === "minimal"
+      ? 0.12
+      : mood.animation === "pulse"
+        ? ((Math.sin(now / 420) + 1) / 2) * motionScale
+        : 0.55;
   const jitter = mood.animation === "glitch" ? (Math.sin(now / 40) > 0.8 ? cell * 0.2 * motionScale : 0) : 0;
   const x = Math.floor((width - faceSize) / 2 + jitter);
   const y = Math.floor((height - faceSize) / 2 + bob);
@@ -57,7 +62,7 @@ function drawPixelFace(
   }
 
   context.fillStyle = palette.glow;
-  context.globalAlpha = 0.22 + glowPulse * 0.16;
+  context.globalAlpha = visualProfile.artStyleMode === "minimal" ? 0.08 : 0.22 + glowPulse * 0.16;
   context.fillRect(x - cell, y - cell, faceSize + cell * 2, faceSize + cell * 2);
   context.globalAlpha = 1;
 
@@ -125,6 +130,33 @@ function drawPixelFace(
     px(1, 1, 1, 1, "#ffffff");
   }
 
+  if (visualProfile.artStyleMode === "playful") {
+    context.save();
+    context.globalAlpha = 0.07;
+    context.fillStyle = palette.line;
+    const scanStep = Math.max(2, cell * 2);
+    for (let row = 1; row < faceSize; row += scanStep) {
+      context.fillRect(x, y + row, faceSize, 1);
+    }
+
+    const sweep = Math.floor(((now / 18) % (faceSize + scanStep)) - scanStep);
+    context.globalAlpha = 0.08;
+    context.fillStyle = palette.glow;
+    context.fillRect(x, y + sweep, faceSize, Math.max(1, Math.floor(cell / 2)));
+    context.restore();
+  }
+
+  if (visualProfile.accentStyle === "antenna") {
+    px(5, -1, 1, 2, palette.line);
+    px(4, 0, 1, 1, palette.accent);
+    px(7, 0, 1, 1, palette.accent);
+  } else if (visualProfile.accentStyle === "frame") {
+    px(0, 0, 12, 1, palette.line);
+    px(0, 11, 12, 1, palette.line);
+    px(0, 0, 1, 12, palette.line);
+    px(11, 0, 1, 12, palette.line);
+  }
+
   if (currentStatus === "sleepy") {
     px(10, 0, 1, 1, palette.line);
     px(9, -1, 1, 1, palette.line);
@@ -136,6 +168,7 @@ export function AgentFaceCard({
   groupCount,
   theme,
   visualRules,
+  artStyleMode = "config",
   selected = false,
   onClick
 }: {
@@ -143,6 +176,7 @@ export function AgentFaceCard({
   groupCount: number;
   theme: ThemePreset;
   visualRules: VisualRule[];
+  artStyleMode?: "config" | "playful" | "minimal";
   selected?: boolean;
   onClick?: () => void;
 }) {
@@ -157,16 +191,22 @@ export function AgentFaceCard({
           currentStatus: entity.currentStatus
         },
         theme,
-        visualRules
+        visualRules,
+        artStyleMode
       ),
-    [entity.currentStatus, entity.entityId, entity.entityKind, entity.source, theme, visualRules]
+    [artStyleMode, entity.currentStatus, entity.entityId, entity.entityKind, entity.source, theme, visualRules]
   );
   const palette = visualProfile.palette;
   const currentStatus = entity.currentStatus;
+  const shouldAnimate = visualProfile.animationMode === "full" && visualProfile.artStyleMode !== "minimal";
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
+      return;
+    }
+
+    if (!canvas.getContext("2d")) {
       return;
     }
 
@@ -175,16 +215,24 @@ export function AgentFaceCard({
       drawPixelFace(canvas, currentStatus, visualProfile, now);
       frame = window.requestAnimationFrame(render);
     };
+
+    drawPixelFace(canvas, currentStatus, visualProfile, performance.now());
+
+    if (!shouldAnimate) {
+      return;
+    }
+
     frame = window.requestAnimationFrame(render);
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [currentStatus, visualProfile]);
+  }, [currentStatus, shouldAnimate, visualProfile]);
 
   return (
     <button
       type="button"
       className={`face-card${selected ? " selected" : ""} ${entity.currentStatus}`}
+      data-art-style={artStyleMode}
       aria-pressed={selected}
       onClick={onClick}
       style={

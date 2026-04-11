@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [react()],
   envDir: resolve(dirname(fileURLToPath(import.meta.url)), "../.."),
   server: {
-    port: 5173
+    host: true,
+    port: 5173,
+    strictPort: true,
+    allowedHosts: true
   }
 });

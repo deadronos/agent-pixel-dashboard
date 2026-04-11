@@ -20,6 +20,7 @@ describe("createResolvedSettings", () => {
 
     expect(resolved.layout.maxAgentsShown).toBe(dashboardConfig.layout.maxAgentsShown);
     expect(resolved.theme.id).toBe(dashboardConfig.themes.defaultThemeId);
+    expect(resolved.artStyleMode).toBe("playful");
   });
 
   it("drops invalid viewer theme ids", () => {

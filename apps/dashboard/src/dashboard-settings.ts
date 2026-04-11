@@ -99,6 +99,6 @@ export function createResolvedSettings(config: DashboardConfig, viewer: ViewerPr
     theme,
     visualRules: config.visualRules,
     ui: config.ui,
-    artStyleMode: viewer.artStyleMode ?? "config"
+    artStyleMode: viewer.artStyleMode ?? "playful"
   };
 }

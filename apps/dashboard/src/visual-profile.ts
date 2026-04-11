@@ -20,19 +20,46 @@ export interface AgentVisualProfile {
   faceVariant: "rounded-bot" | "square-bot" | "soft-ghost" | "terminal-sprite";
   animationMode: "full" | "reduced";
   accentStyle: "sparkles" | "antenna" | "frame" | "none";
+  artStyleMode: "config" | "playful" | "minimal";
 }
 
-export function resolveVisualProfile(entity: VisualEntity, theme: ThemePreset, rules: VisualRule[]): AgentVisualProfile {
+export function resolveVisualProfile(
+  entity: VisualEntity,
+  theme: ThemePreset,
+  rules: VisualRule[],
+  artStyleMode: "config" | "playful" | "minimal" = "config"
+): AgentVisualProfile {
   const match = getBestMatchingRule(entity, rules);
 
   const mood = getFaceMood(entity.currentStatus);
   const palette = resolvePalette(match?.themePalette, entity.source);
+  const animationMode =
+    artStyleMode === "minimal"
+      ? "reduced"
+      : theme.id === "night-shift" && mood.animation === "pulse"
+        ? "reduced"
+        : "full";
+
+  let accentStyle: AgentVisualProfile["accentStyle"] = mood.sparkle ? "sparkles" : "none";
+  if (artStyleMode === "playful") {
+    accentStyle =
+      entity.entityKind === "worker"
+        ? "antenna"
+        : entity.entityKind === "session"
+          ? "frame"
+          : mood.sparkle
+            ? "sparkles"
+            : "frame";
+  } else if (artStyleMode === "minimal") {
+    accentStyle = "none";
+  }
 
   return {
     palette,
     faceVariant: match?.faceVariant ?? "rounded-bot",
-    animationMode: theme.id === "night-shift" && mood.animation === "pulse" ? "reduced" : "full",
-    accentStyle: mood.sparkle ? "sparkles" : "none"
+    animationMode,
+    accentStyle,
+    artStyleMode
   };
 }
 

@@ -5,6 +5,7 @@ import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import { CassSearchClient } from "./cass-search.js";
+import { getHubCorsOptions } from "./cors.js";
 import { createConversationDetailHandler } from "./conversation-detail.js";
 import { applyEvent, computeStatus, expireEntities, type EntityState } from "./state.js";
 
@@ -15,8 +16,7 @@ interface IngestBatchBody {
 
 const app = express();
 const corsOrigins = (process.env.HUB_CORS_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
-const corsOptions = corsOrigins.length > 0 ? { origin: corsOrigins } : { origin: false };
-app.use(cors(corsOptions));
+app.use(cors(getHubCorsOptions(corsOrigins)));
 app.use(express.json({ limit: "2mb" }));
 
 const authToken = process.env.HUB_AUTH_TOKEN;

@@ -53,10 +53,14 @@ export function SettingsPanel({
         type="button"
         className="settings-panel__toggle"
         aria-expanded={open}
+        aria-label="Open settings panel"
         onClick={() => setOpen((s) => !s)}
-        title="Open settings"
+        title="Open settings panel"
       >
-        ⚙
+        <span className="settings-panel__toggle-icon" aria-hidden="true">
+          ⚙
+        </span>
+        <span className="settings-panel__toggle-label">Settings</span>
       </button>
 
       <aside className={`settings-panel ${open ? "settings-panel--open" : ""}`} aria-label="Dashboard settings">
@@ -98,6 +102,22 @@ export function SettingsPanel({
                   {theme.label}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className="settings-panel__field">
+            <span>Art style</span>
+            <select
+              value={settings.artStyleMode}
+              onChange={(event) =>
+                onChange({
+                  artStyleMode: event.target.value as "config" | "playful" | "minimal"
+                })
+              }
+            >
+              <option value="config">Config</option>
+              <option value="playful">Playful</option>
+              <option value="minimal">Minimal</option>
             </select>
           </label>
 

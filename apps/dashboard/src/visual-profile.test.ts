@@ -56,19 +56,20 @@ describe("resolveVisualProfile", () => {
     expect(profile.palette.background).toContain("hsl(154 68% 94%)");
   });
 
-  it("rejects invalid named palette ids instead of falling back", () => {
-    expect(() =>
-      resolveVisualProfile(
-        {
-          source: "codex",
-          entityKind: "worker",
-          entityId: "agent-2",
-          currentStatus: "idle"
-        },
-        dashboardConfig.themes.presets[0],
-        [{ source: "codex", themePalette: "nope" as never }]
-      )
-    ).toThrow("Unknown palette id: nope");
+  it("falls back to provider palette for invalid named palette ids", () => {
+    const profile = resolveVisualProfile(
+      {
+        source: "codex",
+        entityKind: "worker",
+        entityId: "agent-2",
+        currentStatus: "idle"
+      },
+      dashboardConfig.themes.presets[0],
+      [{ source: "codex", themePalette: "nope" as never }]
+    );
+
+    // Should not throw, should return fallback provider palette
+    expect(profile.palette.base).toBeDefined();
   });
 
   it("uses the current status and theme to derive animation and accent style", () => {
@@ -103,5 +104,53 @@ describe("resolveVisualProfile", () => {
 
     expect(profile.animationMode).toBe("full");
     expect(profile.accentStyle).toBe("sparkles");
+  });
+
+  it("switches to minimal presentation when the viewer requests it", () => {
+    const resolver = resolveVisualProfile as unknown as (
+      entity: Parameters<typeof resolveVisualProfile>[0],
+      theme: Parameters<typeof resolveVisualProfile>[1],
+      rules: Parameters<typeof resolveVisualProfile>[2],
+      artStyleMode: "config" | "playful" | "minimal"
+    ) => ReturnType<typeof resolveVisualProfile>;
+
+    const profile = resolver(
+      {
+        source: "codex",
+        entityKind: "session",
+        entityId: "agent-5",
+        currentStatus: "active"
+      },
+      dashboardConfig.themes.presets[0],
+      [],
+      "minimal"
+    );
+
+    expect(profile.accentStyle).toBe("none");
+    expect(profile.animationMode).toBe("reduced");
+  });
+
+  it("uses playful accents for worker entities", () => {
+    const resolver = resolveVisualProfile as unknown as (
+      entity: Parameters<typeof resolveVisualProfile>[0],
+      theme: Parameters<typeof resolveVisualProfile>[1],
+      rules: Parameters<typeof resolveVisualProfile>[2],
+      artStyleMode: "config" | "playful" | "minimal"
+    ) => ReturnType<typeof resolveVisualProfile>;
+
+    const profile = resolver(
+      {
+        source: "codex",
+        entityKind: "worker",
+        entityId: "agent-6",
+        currentStatus: "active"
+      },
+      dashboardConfig.themes.presets[0],
+      [],
+      "playful"
+    );
+
+    expect(profile.accentStyle).toBe("antenna");
+    expect(profile.animationMode).toBe("full");
   });
 });

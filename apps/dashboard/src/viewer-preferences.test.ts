@@ -116,4 +116,21 @@ describe("SettingsPanel", () => {
     expect(markup).toContain("<output>6</output>");
     expect(markup).toContain('value="night-shift" selected');
   });
+
+  it("exposes an explicit settings toggle and art style selector", () => {
+    const settings = createResolvedSettings(dashboardConfig, {});
+
+    const markup = renderToStaticMarkup(
+      createElement(SettingsPanel, {
+        config: dashboardConfig,
+        settings,
+        onChange: () => undefined,
+        onReset: () => undefined
+      })
+    );
+
+    expect(markup).toContain('aria-label="Open settings panel"');
+    expect(markup).toContain("Art style");
+    expect(markup).toContain('value="playful" selected');
+  });
 });

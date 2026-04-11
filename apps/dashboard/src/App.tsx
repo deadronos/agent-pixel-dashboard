@@ -12,16 +12,18 @@ import {
   getEmptyStateMessage,
   getFilterOptions,
   getGridColumns,
+  getEntityStatusSummary,
   findVisibleEntityGroupById,
   getVisibleEntityGroups,
   pruneViewerPreferencesToLiveOptions
 } from "./dashboard-view.js";
+import { resolveHubWebSocketUrl } from "./hub-url.js";
 import { toggleSelectedGroupId } from "./conversation-selection.js";
 import { resolveLiveStatus, type DashboardEntity } from "./face.js";
 import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
 
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
-const HUB_WS = import.meta.env.VITE_HUB_WS ?? "ws://localhost:3030/ws";
+const HUB_WS = resolveHubWebSocketUrl(import.meta.env.VITE_HUB_WS, HUB_HTTP);
 
 function normalizeEntity(entity: DashboardEntity): DashboardEntity {
   return {
@@ -30,9 +32,27 @@ function normalizeEntity(entity: DashboardEntity): DashboardEntity {
   };
 }
 
+function formatTopbarTimestamp(timestamp: string | undefined): string {
+  if (!timestamp) {
+    return "Waiting for activity";
+  }
+
+  const value = new Date(timestamp);
+  if (Number.isNaN(value.getTime())) {
+    return "Waiting for activity";
+  }
+
+  return value.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
 export function App() {
   const [entities, setEntities] = useState<DashboardEntity[]>([]);
-  const [connected, setConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<"connecting" | "live" | "offline">(
+    "connecting"
+  );
   const [viewerPreferences, setViewerPreferences] = useState<ViewerPreferences>(() =>
     loadViewerPreferences()
   );
@@ -45,6 +65,7 @@ export function App() {
     () => pruneViewerPreferencesToLiveOptions(viewerPreferences, filterOptions),
     [viewerPreferences, filterOptions]
   );
+  const statusSummary = useMemo(() => getEntityStatusSummary(entities), [entities]);
   const settings = useMemo(
     () => createResolvedSettings(dashboardConfig, activeViewerPreferences),
     [activeViewerPreferences]
@@ -67,9 +88,9 @@ export function App() {
 
   useEffect(() => {
     const socket = new WebSocket(HUB_WS);
-    socket.addEventListener("open", () => setConnected(true));
-    socket.addEventListener("close", () => setConnected(false));
-    socket.addEventListener("error", () => setConnected(false));
+    socket.addEventListener("open", () => setConnectionState("live"));
+    socket.addEventListener("close", () => setConnectionState("offline"));
+    socket.addEventListener("error", () => setConnectionState("offline"));
     socket.addEventListener("message", (event) => {
       try {
         const payload = JSON.parse(event.data as string) as {
@@ -231,11 +252,42 @@ export function App() {
     >
       <div className="dashboard__shell">
         <header className="topbar">
-          <div>
+          <div className="topbar__copy">
             <p className="eyebrow">Live session mural</p>
             <h1>Agent Watch</h1>
+            <p className="topbar__lede">
+              {statusSummary.total > 0
+                ? `Tracking ${statusSummary.total} conversations. Latest activity at ${formatTopbarTimestamp(statusSummary.latestEventAt)}.`
+                : "Waiting for the first collector event."}
+            </p>
           </div>
-          <div className={`badge ${connected ? "ok" : "warn"}`}>{connected ? "Live" : "Disconnected"}</div>
+          <div className="topbar__meta">
+            <div className="topbar__stats" aria-label="Conversation status summary">
+              <span className="topbar__stat">
+                <strong>{statusSummary.total}</strong>
+                <span>Total</span>
+              </span>
+              <span className="topbar__stat">
+                <strong>{statusSummary.active}</strong>
+                <span>Active</span>
+              </span>
+              <span className="topbar__stat">
+                <strong>{statusSummary.idle}</strong>
+                <span>Idle</span>
+              </span>
+              <span className="topbar__stat">
+                <strong>{statusSummary.dormant}</strong>
+                <span>Dormant</span>
+              </span>
+            </div>
+            <div className={`badge ${connectionState === "live" ? "ok" : "warn"}`} aria-live="polite">
+              {connectionState === "live"
+                ? "Live"
+                : connectionState === "connecting"
+                  ? "Connecting"
+                  : "Disconnected"}
+            </div>
+          </div>
         </header>
 
         {settings.ui.showSettingsPanel ? (
@@ -258,6 +310,7 @@ export function App() {
               groupCount={group.memberCount}
               theme={settings.theme}
               visualRules={settings.visualRules}
+              artStyleMode={settings.artStyleMode}
               selected={selectedVisibleGroupId === group.groupId}
               onClick={() => {
                 setSelectedGroupId((current) => toggleSelectedGroupId(current, group.groupId));
