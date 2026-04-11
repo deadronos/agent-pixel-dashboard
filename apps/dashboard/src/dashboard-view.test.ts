@@ -9,6 +9,7 @@ import {
   getFilterOptions,
   getGridColumns,
   findVisibleEntityGroupById,
+  getEntityStatusSummary,
   getVisibleEntityGroups,
   getVisibleEntities,
   pruneViewerPreferencesToLiveOptions
@@ -275,6 +276,16 @@ describe("getGridColumns", () => {
 });
 
 describe("dashboard view helpers", () => {
+  it("summarizes the current entity mix for the top bar", () => {
+    const summary = getEntityStatusSummary(entities);
+
+    expect(summary.total).toBe(3);
+    expect(summary.active).toBe(1);
+    expect(summary.idle).toBe(1);
+    expect(summary.dormant).toBe(1);
+    expect(summary.latestEventAt).toBe("2026-04-10T10:05:00.000Z");
+  });
+
   it("builds sorted unique filter options from live entities", () => {
     const options = getFilterOptions([
       {

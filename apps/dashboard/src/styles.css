@@ -1,5 +1,5 @@
 :root {
-  font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
+  font-family: "IBM Plex Sans", "Avenir Next", "Trebuchet MS", sans-serif;
   color: #132032;
   background:
     radial-gradient(circle at 20% 15%, rgba(255, 247, 186, 0.88), transparent 28%),
@@ -26,9 +26,24 @@ body {
 }
 
 .dashboard {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   padding: 1.25rem;
   color: var(--text-color);
+}
+
+.dashboard::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.46), transparent 26%),
+    radial-gradient(circle at 14% 18%, rgba(255, 223, 148, 0.22), transparent 18%),
+    radial-gradient(circle at 86% 16%, rgba(102, 140, 255, 0.18), transparent 20%);
+  mix-blend-mode: screen;
+  opacity: 0.9;
 }
 
 .dashboard__shell {
@@ -40,15 +55,17 @@ body {
 
 .topbar {
   grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.95rem 1rem;
+  padding: 1rem 1.1rem;
   border: 1px solid rgba(19, 32, 50, 0.08);
-  border-radius: 1.2rem;
+  border-radius: 1.35rem;
   background: var(--panel-bg);
   backdrop-filter: blur(12px);
+  box-shadow: 0 18px 34px rgba(28, 50, 87, 0.08);
 }
 
 .topbar h1 {
@@ -57,6 +74,61 @@ body {
   line-height: 0.95;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.45),
+    0 3px 0 rgba(19, 32, 50, 0.08),
+    0 12px 24px rgba(28, 50, 87, 0.18);
+}
+
+.topbar__copy {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.topbar__lede {
+  margin: 0;
+  max-width: 50rem;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--muted-text-color);
+}
+
+.topbar__meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.75rem;
+}
+
+.topbar__stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.topbar__stat {
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  min-width: 4.1rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(19, 32, 50, 0.08);
+  border-top: 2px solid color-mix(in srgb, #6f8cff 44%, white);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.24));
+  backdrop-filter: blur(10px);
+}
+
+.topbar__stat strong {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.topbar__stat span {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-text-color);
 }
 
 .eyebrow {
@@ -96,7 +168,7 @@ body {
   position: fixed;
   right: 1.25rem;
   top: 4.5rem;
-  width: 18rem;
+  width: 18.5rem;
   padding: 1rem;
   border-radius: 1.2rem;
   border: 1px solid rgba(19, 32, 50, 0.08);
@@ -119,22 +191,36 @@ body {
   position: absolute;
   right: calc(100% + 0.5rem);
   top: 1rem;
-  width: 2.2rem;
-  height: 2.2rem;
-  border-radius: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+  height: 2.4rem;
+  padding: 0 0.8rem;
+  border-radius: 0.82rem;
   border: 1px solid rgba(19, 32, 50, 0.08);
   background: rgba(255, 255, 255, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
-  font-size: 1rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   box-shadow: 0 6px 12px rgba(28, 50, 87, 0.06);
+  white-space: nowrap;
 }
 
 .settings-panel__toggle:focus {
-  outline: 2px solid color-mix(in srgb, var(--card-accent) 82%, white);
+  outline: 2px solid color-mix(in srgb, var(--text-color) 34%, white);
   outline-offset: 2px;
+}
+
+.settings-panel__toggle-icon {
+  font-size: 0.95rem;
+}
+
+.settings-panel__toggle-label {
+  margin-top: 0.02rem;
 }
 
 .settings-panel__header {
@@ -297,11 +383,37 @@ body {
   pointer-events: none;
 }
 
+.face-card[data-art-style="playful"]::before {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.58), transparent 42%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12) 0 1px,
+      transparent 1px 7px
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(14, 24, 40, 0.18));
+}
+
+.face-card[data-art-style="minimal"]::before {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.44), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(14, 24, 40, 0.08));
+}
+
 .face-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   box-shadow:
     0 30px 56px rgba(28, 50, 87, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.face-card[data-art-style="playful"].active,
+.face-card[data-art-style="playful"].selected {
+  transform: translateY(-5px);
+}
+
+.face-card[data-art-style="playful"].selected::after {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.58), 0 0 0 2px color-mix(in srgb, var(--card-accent) 62%, transparent);
 }
 
 .face-card.selected {
@@ -328,6 +440,13 @@ body {
     0 0 48px color-mix(in srgb, var(--card-glow) 55%, transparent);
 }
 
+.face-card[data-art-style="playful"].active:not(.selected) {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.58),
+    0 30px 60px rgba(28, 50, 87, 0.2),
+    0 0 56px color-mix(in srgb, var(--card-glow) 62%, transparent);
+}
+
 .face-card.sleepy,
 .face-card.dormant {
   opacity: 0.9;
@@ -347,7 +466,20 @@ body {
   min-height: 18rem;
   align-items: center;
   justify-content: center;
-  padding: 2.8rem 1rem 3.3rem;
+  padding: 2.65rem 1rem 3.15rem;
+}
+
+.face-card[data-art-style="playful"] .face-card__canvas-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0.6rem;
+  border-radius: 1.2rem;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.12), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
+  mix-blend-mode: screen;
+  opacity: 0.65;
 }
 
 .face-card__canvas {
@@ -469,6 +601,15 @@ body {
     0 30px 60px rgba(16, 26, 42, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(14px);
+}
+
+.conversation-drawer__panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 18%);
+  opacity: 0.8;
 }
 
 .conversation-drawer__header {
@@ -653,6 +794,23 @@ body {
   background: rgba(255, 233, 233, 0.52);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .settings-panel,
+  .face-card,
+  .conversation-drawer__panel {
+    transition: none !important;
+  }
+
+  .face-card:hover {
+    transform: none;
+  }
+
+  .face-card[data-art-style="playful"].active,
+  .face-card[data-art-style="playful"].selected {
+    transform: none;
+  }
+}
+
 @media (max-width: 700px) {
   .dashboard {
     padding: 1rem;
@@ -664,7 +822,15 @@ body {
 
   .topbar {
     align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topbar__meta {
+    justify-items: start;
+  }
+
+  .topbar__stats {
+    justify-content: flex-start;
   }
 
   .grid,
@@ -675,6 +841,7 @@ body {
 
   .settings-panel {
     position: static;
+    width: 100%;
   }
 
   .grid {

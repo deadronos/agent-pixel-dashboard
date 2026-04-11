@@ -19,6 +19,17 @@ export interface FilterOptions {
   entityKinds: string[];
 }
 
+export interface EntityStatusSummary {
+  total: number;
+  active: number;
+  idle: number;
+  sleepy: number;
+  dormant: number;
+  done: number;
+  error: number;
+  latestEventAt?: string;
+}
+
 export interface DashboardEntityGroup<T extends DashboardEntity = DashboardEntity> {
   groupId: string;
   sessionId: string | undefined;
@@ -115,6 +126,33 @@ export function getFilterOptions(entities: readonly DashboardEntity[]): FilterOp
     sources: [...new Set(entities.map((entity) => entity.source))].sort(),
     entityKinds: [...new Set(entities.map((entity) => entity.entityKind))].sort()
   };
+}
+
+export function getEntityStatusSummary(entities: readonly DashboardEntity[]): EntityStatusSummary {
+  const summary: EntityStatusSummary = {
+    total: entities.length,
+    active: 0,
+    idle: 0,
+    sleepy: 0,
+    dormant: 0,
+    done: 0,
+    error: 0
+  };
+
+  for (const entity of entities) {
+    summary[entity.currentStatus]++;
+
+    if (!summary.latestEventAt) {
+      summary.latestEventAt = entity.lastEventAt;
+      continue;
+    }
+
+    if (getSortableTimestamp(entity.lastEventAt) > getSortableTimestamp(summary.latestEventAt)) {
+      summary.latestEventAt = entity.lastEventAt;
+    }
+  }
+
+  return summary;
 }
 
 export function pruneViewerPreferencesToLiveOptions(

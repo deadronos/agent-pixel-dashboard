@@ -105,4 +105,52 @@ describe("resolveVisualProfile", () => {
     expect(profile.animationMode).toBe("full");
     expect(profile.accentStyle).toBe("sparkles");
   });
+
+  it("switches to minimal presentation when the viewer requests it", () => {
+    const resolver = resolveVisualProfile as unknown as (
+      entity: Parameters<typeof resolveVisualProfile>[0],
+      theme: Parameters<typeof resolveVisualProfile>[1],
+      rules: Parameters<typeof resolveVisualProfile>[2],
+      artStyleMode: "config" | "playful" | "minimal"
+    ) => ReturnType<typeof resolveVisualProfile>;
+
+    const profile = resolver(
+      {
+        source: "codex",
+        entityKind: "session",
+        entityId: "agent-5",
+        currentStatus: "active"
+      },
+      dashboardConfig.themes.presets[0],
+      [],
+      "minimal"
+    );
+
+    expect(profile.accentStyle).toBe("none");
+    expect(profile.animationMode).toBe("reduced");
+  });
+
+  it("uses playful accents for worker entities", () => {
+    const resolver = resolveVisualProfile as unknown as (
+      entity: Parameters<typeof resolveVisualProfile>[0],
+      theme: Parameters<typeof resolveVisualProfile>[1],
+      rules: Parameters<typeof resolveVisualProfile>[2],
+      artStyleMode: "config" | "playful" | "minimal"
+    ) => ReturnType<typeof resolveVisualProfile>;
+
+    const profile = resolver(
+      {
+        source: "codex",
+        entityKind: "worker",
+        entityId: "agent-6",
+        currentStatus: "active"
+      },
+      dashboardConfig.themes.presets[0],
+      [],
+      "playful"
+    );
+
+    expect(profile.accentStyle).toBe("antenna");
+    expect(profile.animationMode).toBe("full");
+  });
 });
