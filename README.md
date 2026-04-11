@@ -33,6 +33,9 @@ npm run dev:dashboard
 
 Open `http://localhost:5173`.
 
+The dashboard dev server binds to `0.0.0.0`, so you can also open it from another device on the same LAN
+using the machine's hostname or IP address.
+
 Local overrides live in the repo-root `.env.local`, which is loaded by the hub, collector, and dashboard.
 
 If you run the dashboard on a different host or port than the hub, set `HUB_CORS_ORIGINS` on the hub
@@ -41,13 +44,18 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 
 ## Environment variables
 
+### Dashboard
+
+- `VITE_HUB_HTTP` (default: `http://localhost:3030`)
+- `VITE_HUB_WS` (optional; leave blank to derive `ws://` or `wss://` from `VITE_HUB_HTTP`)
+
 ### Hub
 
 - `HUB_PORT` (default: `3030`)
-- `HUB_AUTH_TOKEN` (default: `dev-secret`)
+- `HUB_AUTH_TOKEN` (required; must match the collector token)
 - `CASS_BIN` (default: `cass`)
-- `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; if unset, the hub
-  reflects the request origin for development)
+- `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; leave blank for
+  permissive development, or set an allowlist in deployment)
 
 ### Collector
 
@@ -59,11 +67,22 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `MAX_BATCH_BYTES` (default: `1500000`, keep below hub JSON body limit)
 - `WATCH_SOURCES` (default: `auto`; use `auto|all` or comma-separated sources)
 - `PLUGINS_DIR` (optional; defaults to repo `plugins/` directory for autodiscovery)
-- `CODEX_SESSION_ROOTS` (comma-separated session roots)
-- `CLAUDE_SESSION_ROOTS` (comma-separated session roots)
-- `GEMINI_SESSION_ROOTS` (comma-separated session roots)
-- `OPENCLAW_SESSION_ROOTS` (comma-separated session roots)
-- `COPILOT_SESSION_ROOTS` (comma-separated session roots)
+- `CODEX_SESSION_ROOTS` (optional comma-separated session roots)
+- `CLAUDE_SESSION_ROOTS` (optional comma-separated session roots)
+- `GEMINI_SESSION_ROOTS` (optional comma-separated session roots)
+- `OPENCLAW_SESSION_ROOTS` (optional comma-separated session roots)
+- `COPILOT_SESSION_ROOTS` (optional comma-separated session roots)
+
+### Optional Watcher Tuning
+
+- `CODEX_ACTIVE_WINDOW_MS` (default: `120000`)
+- `CLAUDE_ACTIVE_WINDOW_MS` (default: `120000`)
+- `GEMINI_ACTIVE_WINDOW_MS` (default: `120000`)
+- `OPENCLAW_ACTIVE_WINDOW_MS` (default: `120000`)
+- `OPENCLAW_SCAN_INTERVAL_MS` (default: `15000`)
+- `OPENCLAW_SCAN_MAX_DEPTH` (default: `8`)
+- `OPENCLAW_SCAN_MAX_FILES` (default: `5000`)
+- `COPILOT_ACTIVE_WINDOW_MS` (default: `120000`)
 
 ## CASS integration
 
