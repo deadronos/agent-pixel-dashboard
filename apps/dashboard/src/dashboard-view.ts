@@ -207,7 +207,11 @@ function getSortableTimestamp(timestamp: string): number {
 }
 
 function getGroupingKey(entity: DashboardEntity): string {
-  const stableId = entity.groupKey?.trim() || entity.sessionId?.trim() || entity.entityId;
+  const stableId =
+    entity.groupKey?.trim() ||
+    entity.sessionId?.trim() ||
+    entity.parentEntityId?.trim() ||
+    entity.entityId;
   return `${entity.source}|${stableId}`;
 }
 
