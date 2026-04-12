@@ -39,3 +39,14 @@ export interface CollectorPlugin {
 }
 
 export { isActiveSessionFile, matchesSessionFile, type SessionSource } from "./session-detection.js";
+export {
+  createJsonFileIngestState,
+  createJsonlIngestState,
+  discoverSessionRoots,
+  expandHomePath,
+  getStringValue,
+  ingestJsonFile,
+  ingestJsonlFile,
+  watchJsonSessionFiles,
+  watchJsonlSessionFiles
+} from "./watch-helpers.js";

@@ -1,9 +1,6 @@
-import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
-import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -11,21 +8,17 @@ import type {
   WatchContext,
   WatchHandle
 } from "@agent-watch/plugin-sdk";
-import { watch } from "chokidar";
+import {
+  discoverSessionRoots,
+  getStringValue,
+  matchesSessionFile,
+  watchJsonlSessionFiles,
+  type SessionSource
+} from "@agent-watch/plugin-sdk";
 
 const DEFAULT_PATHS = ["~/.copilot/session-state", "~/.copilot"];
 const SOURCE: SessionSource = "copilot";
-
-function expandHome(input: string): string {
-  if (!input.startsWith("~")) {
-    return input;
-  }
-  return path.join(os.homedir(), input.slice(1));
-}
-
-function getString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
+const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
 function parseRecord(
   sourceHost: string,
@@ -37,36 +30,36 @@ function parseRecord(
   const data =
     record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : undefined;
   const sessionId =
-    getString(record.session_id) ||
-    getString(record.sessionId) ||
-    getString(record.conversation_id) ||
-    getString(data?.sessionId) ||
+    getStringValue(record.session_id) ||
+    getStringValue(record.sessionId) ||
+    getStringValue(record.conversation_id) ||
+    getStringValue(data?.sessionId) ||
     path.basename(path.dirname(filePath));
   const entityId = `copilot:session:${sessionId}`;
 
   const timestamp =
-    getString(record.timestamp) ||
-    getString(record.created_at) ||
-    getString(record.createdAt) ||
+    getStringValue(record.timestamp) ||
+    getStringValue(record.created_at) ||
+    getStringValue(record.createdAt) ||
     fallbackTimestamp;
 
   const eventType =
-    getString(record.event_type) ||
-    getString(record.type) ||
+    getStringValue(record.event_type) ||
+    getStringValue(record.type) ||
     "message";
 
   const summary =
-    getString(data?.content) ||
-    getString(record.summary) ||
-    getString(record.message) ||
-    getString(record.text) ||
-    getString(record.content);
+    getStringValue(data?.content) ||
+    getStringValue(record.summary) ||
+    getStringValue(record.message) ||
+    getStringValue(record.text) ||
+    getStringValue(record.content);
 
   const detail =
-    getString(data?.selectedModel) ||
-    getString(record.detail) ||
-    getString(record.content) ||
-    getString(record.raw);
+    getStringValue(data?.selectedModel) ||
+    getStringValue(record.detail) ||
+    getStringValue(record.content) ||
+    getStringValue(record.raw);
 
   const rawActivity = typeof record.activityScore === "number" ? record.activityScore : undefined;
   const activityScore = rawActivity ?? (eventType.startsWith("tool") ? 0.85 : 0.6);
@@ -89,16 +82,16 @@ function parseRecord(
     entityKind: "session" as const,
     displayName: "Copilot",
     eventType,
-    status: getString(record.status, "active"),
+    status: getStringValue(record.status, "active"),
     summary: summary || "Copilot activity",
     detail: detail || undefined,
     activityScore: Math.max(0, Math.min(1, activityScore)),
     sequence,
     meta: {
       filePath,
-      toolName: getString(record.toolName) || getString(record.tool_name),
-      rawType: getString(record.type),
-      model: getString(data?.selectedModel) || undefined
+      toolName: getStringValue(record.toolName) || getStringValue(record.tool_name),
+      rawType: getStringValue(record.type),
+      model: getStringValue(data?.selectedModel) || undefined
     }
   };
 
@@ -110,121 +103,21 @@ export class CopilotWatchPlugin implements CollectorPlugin {
   source = "copilot";
 
   async discover(config: PluginContext): Promise<DiscoveredSessionRoot[]> {
-    const envRoots = (config.env.COPILOT_SESSION_ROOTS ?? "")
-      .split(",")
-      .map((value: string) => value.trim())
-      .filter(Boolean);
-
-    const configured = config.configuredRoots.length > 0 ? config.configuredRoots : [...envRoots, ...DEFAULT_PATHS];
-    const roots = configured.map(expandHome);
-    const discovered: DiscoveredSessionRoot[] = [];
-
-    await Promise.all(
-      roots.map(async (rootPath: string, index: number) => {
-        try {
-          const stat = await fs.stat(rootPath);
-          if (!stat.isDirectory()) {
-            return;
-          }
-          discovered.push({ id: `copilot-root-${index}`, path: rootPath, host: config.host });
-        } catch {
-          // ignore missing roots
-        }
-      })
-    );
-
-    return discovered;
+    return discoverSessionRoots(config, {
+      envVar: "COPILOT_SESSION_ROOTS",
+      defaultRoots: DEFAULT_PATHS,
+      idPrefix: "copilot-root"
+    });
   }
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
     const activeWindowMs = Number(process.env.COPILOT_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
-    const offsets = new Map<string, number>();
-    const sequences = new Map<string, number>();
-
-    const ingestFile = async (filePath: string, reason: "add" | "change"): Promise<void> => {
-      if (!matchesSessionFile(SOURCE, filePath)) {
-        return;
-      }
-
-      try {
-        const stat = await fs.stat(filePath);
-        if (!offsets.has(filePath) && reason === "add") {
-          if (!isActiveSessionFile(stat.mtimeMs, Date.now(), activeWindowMs)) {
-            offsets.set(filePath, stat.size);
-            return;
-          }
-        }
-        const previousOffset = offsets.get(filePath) ?? 0;
-        const nextOffset = stat.size < previousOffset ? 0 : previousOffset;
-
-        const handle = await fs.open(filePath, "r");
-        try {
-          const length = stat.size - nextOffset;
-          if (length <= 0) {
-            offsets.set(filePath, stat.size);
-            return;
-          }
-
-          const buffer = Buffer.alloc(length);
-          await handle.read(buffer, 0, length, nextOffset);
-          const text = buffer.toString("utf8");
-          const lines = text.split("\n").filter((line) => line.trim().length > 0);
-
-          for (const line of lines) {
-            let parsed: Record<string, unknown>;
-            try {
-              parsed = JSON.parse(line) as Record<string, unknown>;
-            } catch {
-              continue;
-            }
-
-            const sequence = (sequences.get(filePath) ?? 0) + 1;
-            sequences.set(filePath, sequence);
-
-            try {
-              const event = parseRecord(root.host, filePath, parsed, sequence, stat.mtime.toISOString());
-              ctx.onEvent(event);
-            } catch (error) {
-              ctx.onError(error as Error);
-            }
-          }
-
-          offsets.set(filePath, stat.size);
-        } finally {
-          await handle.close();
-        }
-      } catch (error) {
-        ctx.onError(error as Error);
-      }
-    };
-
-    const watcher = watch(root.path, {
-      persistent: true,
-      ignoreInitial: false,
-      depth: 6,
-      awaitWriteFinish: {
-        stabilityThreshold: 120,
-        pollInterval: 40
-      }
+    return watchJsonlSessionFiles(root, ctx, {
+      matchFile: MATCH_SESSION_FILE,
+      activeWindowMs,
+      parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
+        parseRecord(root.host, filePath, record, sequence, fallbackTimestamp)
     });
-
-    watcher.on("add", (filePath) => {
-      void ingestFile(filePath, "add");
-    });
-
-    watcher.on("change", (filePath) => {
-      void ingestFile(filePath, "change");
-    });
-
-    watcher.on("error", (error) => {
-      ctx.onError(error as Error);
-    });
-
-    return {
-      close: async () => {
-        await watcher.close();
-      }
-    };
   }
 }
 

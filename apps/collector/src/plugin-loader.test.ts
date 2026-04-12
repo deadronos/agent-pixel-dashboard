@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { extractSourceFromDirName, resolvePluginDir, resolveRequestedSources } from "./plugin-loader.js";
+import {
+  collectorPluginRegistry,
+  extractSourceFromDirName,
+  resolvePluginDir,
+  resolveRequestedSources
+} from "./plugin-loader.js";
+
+describe("collectorPluginRegistry", () => {
+  it("declares explicit package mappings for known sources", () => {
+    expect(collectorPluginRegistry).toContainEqual(
+      expect.objectContaining({
+        source: "codex",
+        directoryName: "plugin-codex-watch",
+        packageName: "@agent-watch/plugin-codex-watch"
+      })
+    );
+  });
+});
 
 describe("extractSourceFromDirName", () => {
   it("extracts source from plugin directory name", () => {

@@ -1,9 +1,6 @@
-import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
-import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -11,21 +8,17 @@ import type {
   WatchContext,
   WatchHandle
 } from "@agent-watch/plugin-sdk";
-import { watch } from "chokidar";
+import {
+  discoverSessionRoots,
+  getStringValue,
+  matchesSessionFile,
+  watchJsonSessionFiles,
+  type SessionSource
+} from "@agent-watch/plugin-sdk";
 
 const DEFAULT_PATHS = ["~/.gemini/tmp", "~/.gemini"];
 const SOURCE: SessionSource = "gemini";
-
-function expandHome(input: string): string {
-  if (!input.startsWith("~")) {
-    return input;
-  }
-  return path.join(os.homedir(), input.slice(1));
-}
-
-function getString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
+const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
 function parseGeminiSessionFile(
   sourceHost: string,
@@ -35,7 +28,7 @@ function parseGeminiSessionFile(
   fallbackTimestamp: string
 ): NormalizedEvent {
   const sessionId =
-    getString(record.sessionId) ||
+    getStringValue(record.sessionId) ||
     path.basename(filePath).replace(/^session-/, "").replace(/\.json$/, "");
   const entityId = `gemini:session:${sessionId}`;
   const messages = Array.isArray(record.messages) ? (record.messages as Array<Record<string, unknown>>) : [];
@@ -44,29 +37,29 @@ function parseGeminiSessionFile(
     [...messages].reverse().find((message) => Array.isArray(message.toolCalls) && message.toolCalls.length > 0) ?? null;
 
   const timestamp =
-    getString(record.timestamp) ||
-    getString(record.created_at) ||
-    getString(record.createdAt) ||
+    getStringValue(record.timestamp) ||
+    getStringValue(record.created_at) ||
+    getStringValue(record.createdAt) ||
     fallbackTimestamp;
 
   const eventType =
-    getString(lastMessage.type) ||
+    getStringValue(lastMessage.type) ||
     "message";
 
   const summary =
-    getString(lastMessage.content) ||
-    getString(record.summary) ||
+    getStringValue(lastMessage.content) ||
+    getStringValue(record.summary) ||
     "Gemini activity";
 
   const detail =
-    getString(record.projectHash) ||
-    getString(record.cwd);
+    getStringValue(record.projectHash) ||
+    getStringValue(record.cwd);
 
   const rawActivity = typeof record.activityScore === "number" ? record.activityScore : undefined;
   const activityScore = rawActivity ?? (eventType.startsWith("tool") ? 0.85 : 0.6);
   const model =
-    getString(lastMessage.model) ||
-    getString(
+    getStringValue(lastMessage.model) ||
+    getStringValue(
       lastToolCall && Array.isArray(lastToolCall.toolCalls)
         ? (lastToolCall.toolCalls[0] as Record<string, unknown>)?.model
         : undefined
@@ -90,7 +83,7 @@ function parseGeminiSessionFile(
     entityKind: "session" as const,
     displayName: "Gemini",
     eventType,
-    status: getString(record.status, "active"),
+    status: getStringValue(record.status, "active"),
     summary: summary || "Gemini activity",
     detail: detail || undefined,
     activityScore: Math.max(0, Math.min(1, activityScore)),
@@ -100,9 +93,9 @@ function parseGeminiSessionFile(
       groupKey: detail || undefined,
       toolName:
         lastToolCall && Array.isArray(lastToolCall.toolCalls)
-          ? getString((lastToolCall.toolCalls[0] as Record<string, unknown>)?.name)
+          ? getStringValue((lastToolCall.toolCalls[0] as Record<string, unknown>)?.name)
           : undefined,
-      rawType: getString(lastMessage.type),
+      rawType: getStringValue(lastMessage.type),
       model: model || undefined
     }
   };
@@ -115,94 +108,21 @@ export class GeminiWatchPlugin implements CollectorPlugin {
   source = "gemini";
 
   async discover(config: PluginContext): Promise<DiscoveredSessionRoot[]> {
-    const envRoots = (config.env.GEMINI_SESSION_ROOTS ?? "")
-      .split(",")
-      .map((value: string) => value.trim())
-      .filter(Boolean);
-
-    const configured = config.configuredRoots.length > 0 ? config.configuredRoots : [...envRoots, ...DEFAULT_PATHS];
-    const roots = configured.map(expandHome);
-    const discovered: DiscoveredSessionRoot[] = [];
-
-    await Promise.all(
-      roots.map(async (rootPath: string, index: number) => {
-        try {
-          const stat = await fs.stat(rootPath);
-          if (!stat.isDirectory()) {
-            return;
-          }
-          discovered.push({ id: `gemini-root-${index}`, path: rootPath, host: config.host });
-        } catch {
-          // ignore missing roots
-        }
-      })
-    );
-
-    return discovered;
+    return discoverSessionRoots(config, {
+      envVar: "GEMINI_SESSION_ROOTS",
+      defaultRoots: DEFAULT_PATHS,
+      idPrefix: "gemini-root"
+    });
   }
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
     const activeWindowMs = Number(process.env.GEMINI_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
-    const mtimes = new Map<string, number>();
-    const sequences = new Map<string, number>();
-
-    const ingestFile = async (filePath: string, reason: "add" | "change"): Promise<void> => {
-      if (!matchesSessionFile(SOURCE, filePath)) {
-        return;
-      }
-
-      try {
-        const stat = await fs.stat(filePath);
-        if (!mtimes.has(filePath) && reason === "add") {
-          if (!isActiveSessionFile(stat.mtimeMs, Date.now(), activeWindowMs)) {
-            mtimes.set(filePath, stat.mtimeMs);
-            return;
-          }
-        }
-        const previousMtime = mtimes.get(filePath);
-        if (reason === "change" && previousMtime !== undefined && stat.mtimeMs <= previousMtime) {
-          return;
-        }
-
-        const raw = await fs.readFile(filePath, "utf8");
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
-        const sequence = (sequences.get(filePath) ?? 0) + 1;
-        sequences.set(filePath, sequence);
-        const event = parseGeminiSessionFile(root.host, filePath, parsed, sequence, stat.mtime.toISOString());
-        ctx.onEvent(event);
-        mtimes.set(filePath, stat.mtimeMs);
-      } catch (error) {
-        ctx.onError(error as Error);
-      }
-    };
-
-    const watcher = watch(root.path, {
-      persistent: true,
-      ignoreInitial: false,
-      depth: 6,
-      awaitWriteFinish: {
-        stabilityThreshold: 120,
-        pollInterval: 40
-      }
+    return watchJsonSessionFiles(root, ctx, {
+      matchFile: MATCH_SESSION_FILE,
+      activeWindowMs,
+      parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
+        parseGeminiSessionFile(root.host, filePath, record, sequence, fallbackTimestamp)
     });
-
-    watcher.on("add", (filePath) => {
-      void ingestFile(filePath, "add");
-    });
-
-    watcher.on("change", (filePath) => {
-      void ingestFile(filePath, "change");
-    });
-
-    watcher.on("error", (error) => {
-      ctx.onError(error as Error);
-    });
-
-    return {
-      close: async () => {
-        await watcher.close();
-      }
-    };
   }
 }
 

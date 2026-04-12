@@ -1,49 +1,19 @@
-import type { NormalizedEvent } from "@agent-watch/event-schema";
+import {
+  resolveEntityStatus,
+  type DashboardEntity,
+  type EntityStatus,
+  type NormalizedEvent
+} from "@agent-watch/event-schema";
 
-export type EntityStatus = "active" | "idle" | "sleepy" | "dormant" | "done" | "error";
-
-export interface EntityState {
-  entityId: string;
-  source: string;
-  sourceHost: string;
-  displayName: string;
-  entityKind: string;
-  sessionId?: string;
-  parentEntityId?: string | null;
-  groupKey?: string;
-  currentStatus: EntityStatus;
-  lastEventAt: string;
-  lastSummary?: string;
-  activityScore: number;
+export interface EntityState extends DashboardEntity {
   recentEvents: string[];
 }
 
-const ACTIVE_WINDOW_MS = 10_000;
-const IDLE_WINDOW_MS = 30_000;
-const SLEEPY_WINDOW_MS = 90_000;
-const DORMANT_WINDOW_MS = 300_000;
 const MAX_RECENT_EVENTS = 25;
 const ENTITY_EXPIRE_MS = 3_600_000; // 1 hour for done/error entities
 
 export function computeStatus(state: Pick<EntityState, "lastEventAt" | "currentStatus">, now: Date): EntityStatus {
-  if (state.currentStatus === "done" || state.currentStatus === "error") {
-    return state.currentStatus;
-  }
-
-  const ageMs = now.getTime() - new Date(state.lastEventAt).getTime();
-  if (ageMs <= ACTIVE_WINDOW_MS) {
-    return "active";
-  }
-  if (ageMs <= IDLE_WINDOW_MS) {
-    return "idle";
-  }
-  if (ageMs <= SLEEPY_WINDOW_MS) {
-    return "sleepy";
-  }
-  if (ageMs <= DORMANT_WINDOW_MS) {
-    return "dormant";
-  }
-  return "dormant";
+  return resolveEntityStatus(state.currentStatus, state.lastEventAt, now);
 }
 
 export function expireEntities(entities: Map<string, EntityState>, now: Date): void {
@@ -70,7 +40,7 @@ function statusFromEvent(event: NormalizedEvent): EntityStatus {
 
 export function applyEvent(previous: EntityState | undefined, event: NormalizedEvent): EntityState {
   const status = statusFromEvent(event);
-  const recentEvents = previous ? [...previous.recentEvents, event.eventId].slice(-MAX_RECENT_EVENTS) : [event.eventId];
+  const recentEvents = [...(previous?.recentEvents ?? []), event.eventId].slice(-MAX_RECENT_EVENTS);
   const groupKey = typeof event.meta?.groupKey === "string" ? event.meta.groupKey : previous?.groupKey;
 
   return {

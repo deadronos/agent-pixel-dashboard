@@ -1,7 +1,13 @@
 import "./env.js";
 import http from "node:http";
 
-import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
+import {
+  parseNormalizedEvent,
+  type HubEventsMessage,
+  type HubHelloMessage,
+  type HubStateResponse,
+  type NormalizedEvent
+} from "@agent-watch/event-schema";
 import cors from "cors";
 import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
@@ -133,7 +139,8 @@ app.post("/api/events/batch", (req, res) => {
   }
 
   if (accepted.length > 0) {
-    broadcast({ type: "events", events: accepted });
+    const payload: HubEventsMessage = { type: "events", events: accepted };
+    broadcast(payload);
   }
 
   res.json({ accepted: accepted.length, rejected });
@@ -149,7 +156,8 @@ app.get("/api/state", (req, res) => {
   const filtered = includeDormant
     ? state
     : state.filter((entity) => entity.currentStatus === "active" || entity.currentStatus === "idle" || entity.currentStatus === "sleepy");
-  res.json({ entities: filtered });
+  const payload: HubStateResponse = { entities: filtered };
+  res.json(payload);
 });
 
 app.get("/api/events/recent", (req, res) => {
@@ -202,7 +210,8 @@ app.get("/api/search/sessions", async (req, res) => {
 });
 
 wss.on("connection", (socket) => {
-  socket.send(JSON.stringify({ type: "hello", entities: entities.size }));
+  const payload: HubHelloMessage = { type: "hello", entities: entities.size };
+  socket.send(JSON.stringify(payload));
 });
 
 const port = Number(process.env.HUB_PORT ?? 3030);

@@ -4,9 +4,43 @@ import { fileURLToPath } from "node:url";
 
 import type { CollectorPlugin } from "@agent-watch/plugin-sdk";
 
+export interface CollectorPluginRegistration {
+  source: string;
+  directoryName: string;
+  packageName: string;
+}
+
+export const collectorPluginRegistry: CollectorPluginRegistration[] = [
+  {
+    source: "claude",
+    directoryName: "plugin-claude-watch",
+    packageName: "@agent-watch/plugin-claude-watch"
+  },
+  {
+    source: "codex",
+    directoryName: "plugin-codex-watch",
+    packageName: "@agent-watch/plugin-codex-watch"
+  },
+  {
+    source: "copilot",
+    directoryName: "plugin-copilot-watch",
+    packageName: "@agent-watch/plugin-copilot-watch"
+  },
+  {
+    source: "gemini",
+    directoryName: "plugin-gemini-watch",
+    packageName: "@agent-watch/plugin-gemini-watch"
+  },
+  {
+    source: "openclaw",
+    directoryName: "plugin-openclaw-watch",
+    packageName: "@agent-watch/plugin-openclaw-watch"
+  }
+];
+
 export function extractSourceFromDirName(dirName: string): string | null {
-  const match = /^plugin-([a-z0-9-]+)-watch$/.exec(dirName);
-  return match?.[1] ?? null;
+  const registration = collectorPluginRegistry.find((entry) => entry.directoryName === dirName);
+  return registration?.source ?? null;
 }
 
 export function resolveRequestedSources(requestedSources: string[], discoveredSources: string[]): string[] {
@@ -19,18 +53,22 @@ export function resolveRequestedSources(requestedSources: string[], discoveredSo
 
 export async function discoverPluginSources(pluginDir: string): Promise<string[]> {
   const entries = await fs.readdir(pluginDir, { withFileTypes: true });
-  const sources = entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => extractSourceFromDirName(entry.name))
-    .filter((source): source is string => Boolean(source))
-    .sort((left, right) => left.localeCompare(right));
-  return sources;
+  const availableDirectories = new Set(entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name));
+
+  return collectorPluginRegistry
+    .filter((entry) => availableDirectories.has(entry.directoryName))
+    .map((entry) => entry.source);
 }
 
 export async function loadPluginsFromSources(sources: string[]): Promise<CollectorPlugin[]> {
   const loaded: CollectorPlugin[] = [];
   for (const source of sources) {
-    const pkgName = `@agent-watch/plugin-${source}-watch`;
+    const registration = collectorPluginRegistry.find((entry) => entry.source === source);
+    if (!registration) {
+      continue;
+    }
+
+    const pkgName = registration.packageName;
     try {
       const mod = (await import(pkgName)) as { default?: () => CollectorPlugin };
       if (typeof mod.default !== "function") {

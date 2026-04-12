@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   for (const plugin of selectedPlugins) {
     const roots = await plugin.discover({
       host: config.hostName,
-      configuredRoots: config.codexRoots,
+      configuredRoots: config.sessionRoots,
       env: process.env
     });
 
