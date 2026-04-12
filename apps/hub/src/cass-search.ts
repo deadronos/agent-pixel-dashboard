@@ -18,6 +18,7 @@ export interface SessionSearchResponse {
 }
 
 export class CassSearchClient {
+  // eslint-disable-next-line no-unused-vars
   constructor(private readonly binary = process.env.CASS_BIN ?? "cass") {}
 
   async isAvailable(): Promise<boolean> {

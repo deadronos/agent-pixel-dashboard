@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { NormalizedEventSchema, makeDeterministicEventId, parseNormalizedEvent } from "./index.js";
 
 describe("NormalizedEventSchema", () => {

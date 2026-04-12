@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import type { NormalizedEvent } from "@agent-watch/event-schema";
+import { describe, expect, it } from "vitest";
+
 import { applyEvent, computeStatus, type EntityState } from "./state.js";
 
 function sampleEvent(overrides: Partial<NormalizedEvent> = {}): NormalizedEvent {

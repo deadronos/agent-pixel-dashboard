@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { isActiveSessionFile, matchesSessionFile } from "./session-detection.js";
 
 describe("matchesSessionFile", () => {

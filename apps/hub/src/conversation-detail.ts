@@ -1,5 +1,6 @@
 import type { NormalizedEvent } from "@agent-watch/event-schema";
 import type { RequestHandler } from "express";
+
 import { computeStatus, type EntityState } from "./state.js";
 
 export interface ConversationDetailQuery {

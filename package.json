@@ -10,14 +10,22 @@
   "scripts": {
     "build": "npm run --workspaces build",
     "test": "npm run --workspaces test",
-    "lint": "npm run --workspaces lint",
+    "lint": "eslint .",
+    "format": "prettier --write .",
     "dev:hub": "npm --workspace @agent-watch/hub run dev",
     "dev:collector": "npm --workspace @agent-watch/collector run dev",
     "dev:dashboard": "npm --workspace @agent-watch/dashboard run dev"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.3",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.2",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.58.1",
     "vitest": "^3.1.1"
   }
 }

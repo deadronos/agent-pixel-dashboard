@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
 import type { NormalizedEvent } from "@agent-watch/event-schema";
+import { describe, expect, it } from "vitest";
+
 import { buildSizedBatches } from "./batching.js";
 
 function mkEvent(id: number, detailSize = 200): NormalizedEvent {

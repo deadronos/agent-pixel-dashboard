@@ -1,11 +1,12 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+
 import { AgentFaceCard } from "./AgentFaceCard.js";
 import { ConversationDrawer } from "./ConversationDrawer.js";
-import type { DashboardEntityGroup } from "./dashboard-view.js";
 import type { ConversationDetailPayload } from "./conversation-detail.js";
 import type { ThemePreset, VisualRule } from "./dashboard-settings.js";
+import type { DashboardEntityGroup } from "./dashboard-view.js";
 
 const theme: ThemePreset = {
   id: "test",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { buildConversationDetailUrl } from "./conversation-detail.js";
 
 describe("buildConversationDetailUrl", () => {

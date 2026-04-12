@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+
 import { AgentFaceCard } from "./AgentFaceCard.js";
+import { ConversationDrawer } from "./ConversationDrawer.js";
+import { SettingsPanel } from "./SettingsPanel.js";
 import {
   buildConversationDetailUrl,
   type ConversationDetailPayload
 } from "./conversation-detail.js";
-import { ConversationDrawer } from "./ConversationDrawer.js";
-import { SettingsPanel } from "./SettingsPanel.js";
+import { toggleSelectedGroupId } from "./conversation-selection.js";
 import { dashboardConfig } from "./dashboard-config.js";
 import { createResolvedSettings, type ViewerPreferences } from "./dashboard-settings.js";
 import {
@@ -17,9 +19,8 @@ import {
   getVisibleEntityGroups,
   pruneViewerPreferencesToLiveOptions
 } from "./dashboard-view.js";
-import { resolveHubWebSocketUrl } from "./hub-url.js";
-import { toggleSelectedGroupId } from "./conversation-selection.js";
 import { resolveLiveStatus, type DashboardEntity } from "./face.js";
+import { resolveHubWebSocketUrl } from "./hub-url.js";
 import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
 
 const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";

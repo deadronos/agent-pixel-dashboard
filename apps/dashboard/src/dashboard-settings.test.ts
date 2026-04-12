@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { dashboardConfig } from "./dashboard-config.js";
 import { createResolvedSettings, type DashboardConfig } from "./dashboard-settings.js";
 

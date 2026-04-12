@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+
 import { SettingsPanel } from "./SettingsPanel.js";
 import { dashboardConfig } from "./dashboard-config.js";
 import type { ResolvedSettings } from "./dashboard-settings.js";

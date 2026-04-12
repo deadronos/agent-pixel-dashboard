@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { buildHubWebSocketUrl, resolveHubWebSocketUrl } from "./hub-url.js";
 
 describe("buildHubWebSocketUrl", () => {

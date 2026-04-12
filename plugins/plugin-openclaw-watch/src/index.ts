@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { setInterval } from "node:timers";
+
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
@@ -11,6 +12,7 @@ import type {
   WatchContext,
   WatchHandle
 } from "@agent-watch/plugin-sdk";
+
 import { buildOpenClawSessionId, getOpenClawAgentId } from "./identity.js";
 import { collectJsonlFiles } from "./polling.js";
 

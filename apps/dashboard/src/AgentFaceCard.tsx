@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
-import { getFaceMood, getFaceShell, getStatusLabel, type DashboardEntity, type EntityStatus } from "./face.js";
+
 import type { ThemePreset, VisualRule } from "./dashboard-settings.js";
+import { getFaceMood, getFaceShell, getStatusLabel, type DashboardEntity, type EntityStatus } from "./face.js";
 import { resolveVisualProfile } from "./visual-profile.js";
 
 function drawPixelFace(

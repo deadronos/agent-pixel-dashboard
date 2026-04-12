@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { extractSourceFromDirName, resolvePluginDir, resolveRequestedSources } from "./plugin-loader.js";
 
 describe("extractSourceFromDirName", () => {

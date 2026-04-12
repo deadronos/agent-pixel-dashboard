@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { watch } from "chokidar";
+
 import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
 import type {
@@ -11,6 +11,7 @@ import type {
   WatchContext,
   WatchHandle
 } from "@agent-watch/plugin-sdk";
+import { watch } from "chokidar";
 
 const DEFAULT_PATHS = ["~/.claude/projects", "~/.claude"];
 const SOURCE: SessionSource = "claude";

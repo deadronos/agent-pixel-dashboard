@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { dashboardConfig } from "./dashboard-config.js";
 import { resolveVisualProfile } from "./visual-profile.js";
 
@@ -108,10 +109,10 @@ describe("resolveVisualProfile", () => {
 
   it("switches to minimal presentation when the viewer requests it", () => {
     const resolver = resolveVisualProfile as unknown as (
-      entity: Parameters<typeof resolveVisualProfile>[0],
-      theme: Parameters<typeof resolveVisualProfile>[1],
-      rules: Parameters<typeof resolveVisualProfile>[2],
-      artStyleMode: "config" | "playful" | "minimal"
+      _entity: Parameters<typeof resolveVisualProfile>[0],
+      _theme: Parameters<typeof resolveVisualProfile>[1],
+      _rules: Parameters<typeof resolveVisualProfile>[2],
+      _artStyleMode: "config" | "playful" | "minimal"
     ) => ReturnType<typeof resolveVisualProfile>;
 
     const profile = resolver(
@@ -132,10 +133,10 @@ describe("resolveVisualProfile", () => {
 
   it("uses playful accents for worker entities", () => {
     const resolver = resolveVisualProfile as unknown as (
-      entity: Parameters<typeof resolveVisualProfile>[0],
-      theme: Parameters<typeof resolveVisualProfile>[1],
-      rules: Parameters<typeof resolveVisualProfile>[2],
-      artStyleMode: "config" | "playful" | "minimal"
+      _entity: Parameters<typeof resolveVisualProfile>[0],
+      _theme: Parameters<typeof resolveVisualProfile>[1],
+      _rules: Parameters<typeof resolveVisualProfile>[2],
+      _artStyleMode: "config" | "playful" | "minimal"
     ) => ReturnType<typeof resolveVisualProfile>;
 
     const profile = resolver(

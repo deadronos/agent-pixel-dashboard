@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
 import type { NormalizedEvent } from "@agent-watch/event-schema";
-import { applyEvent } from "./state.js";
+import { describe, expect, it } from "vitest";
+
 import { createConversationDetailHandler, getConversationDetail } from "./conversation-detail.js";
+import { applyEvent } from "./state.js";
 
 function sampleEvent(overrides: Partial<NormalizedEvent> = {}): NormalizedEvent {
   return {
@@ -34,12 +35,12 @@ function createMockRes() {
   } = {
     statusCode: 200,
     body: undefined,
-    status(code: number) {
-      this.statusCode = code;
+    status(_code: number) {
+      this.statusCode = _code;
       return this;
     },
-    json(body: unknown) {
-      this.body = body;
+    json(_body: unknown) {
+      this.body = _body;
     }
   };
   return res;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getHubCorsOptions } from "./cors.js";
 
 describe("getHubCorsOptions", () => {

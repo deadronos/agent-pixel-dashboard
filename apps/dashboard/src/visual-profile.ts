@@ -1,3 +1,4 @@
+import type { ThemePreset, VisualRule } from "./dashboard-settings.js";
 import {
   getFaceMood,
   getNamedPalette,
@@ -6,7 +7,6 @@ import {
   type EntityStatus,
   type ProviderPalette
 } from "./face.js";
-import type { ThemePreset, VisualRule } from "./dashboard-settings.js";
 
 interface VisualEntity {
   source: string;

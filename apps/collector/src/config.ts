@@ -12,7 +12,7 @@ export interface CollectorConfig {
   codexRoots: string[];
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv): CollectorConfig {
+export function loadConfig(env: Record<string, string | undefined>): CollectorConfig {
   return {
     collectorId: env.COLLECTOR_ID ?? `collector-${os.hostname()}`,
     hostName: env.COLLECTOR_HOST ?? os.hostname(),

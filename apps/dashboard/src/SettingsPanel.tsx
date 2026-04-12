@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import type { DashboardConfig, ResolvedSettings, ViewerPreferences } from "./dashboard-settings.js";
 
 interface SettingsPanelProps {
@@ -7,7 +8,8 @@ interface SettingsPanelProps {
   sourceOptions?: string[];
   entityKindOptions?: string[];
   viewerPreferences?: ViewerPreferences;
-  onChange: (patch: ViewerPreferences) => void;
+  // eslint-disable-next-line no-unused-vars
+  onChange: (_patch: ViewerPreferences) => void;
   onReset: () => void;
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, type CSSProperties } from "react";
+
 import type { ConversationDetailPayload } from "./conversation-detail.js";
 import type { DashboardEntityGroup } from "./dashboard-view.js";
 import type { EntityStatus } from "./face.js";

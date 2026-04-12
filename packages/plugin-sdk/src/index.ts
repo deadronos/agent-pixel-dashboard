@@ -10,7 +10,7 @@ export interface DiscoveredSessionRoot {
 export interface PluginContext {
   host: string;
   configuredRoots: string[];
-  env: NodeJS.ProcessEnv;
+  env: Record<string, string | undefined>;
 }
 
 export interface ParseContext {
@@ -18,8 +18,10 @@ export interface ParseContext {
 }
 
 export interface WatchContext {
-  onEvent: (event: NormalizedEvent) => void;
-  onError: (error: Error) => void;
+  // eslint-disable-next-line no-unused-vars
+  onEvent: (_event: NormalizedEvent) => void;
+  // eslint-disable-next-line no-unused-vars
+  onError: (_error: Error) => void;
 }
 
 export interface WatchHandle {
@@ -30,8 +32,10 @@ export interface CollectorPlugin {
   id: string;
   source: string;
 
-  discover(config: PluginContext): Promise<DiscoveredSessionRoot[]>;
-  watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle>;
+  // eslint-disable-next-line no-unused-vars
+  discover(_config: PluginContext): Promise<DiscoveredSessionRoot[]>;
+  // eslint-disable-next-line no-unused-vars
+  watch(_root: DiscoveredSessionRoot, _ctx: WatchContext): Promise<WatchHandle>;
 }
 
 export { isActiveSessionFile, matchesSessionFile, type SessionSource } from "./session-detection.js";

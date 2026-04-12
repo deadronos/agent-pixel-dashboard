@@ -1,7 +1,9 @@
 import "./env.js";
 import { setInterval } from "node:timers";
+
 import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import type { WatchHandle } from "@agent-watch/plugin-sdk";
+
 import { buildSizedBatches } from "./batching.js";
 import { loadConfig } from "./config.js";
 import {
@@ -84,7 +86,7 @@ async function main(): Promise<void> {
           }
         },
         onError: (error: Error) => {
-          // eslint-disable-next-line no-console
+           
           console.error(`[${plugin.source}] watch error [${root.path}]`, error.message);
         }
       });
@@ -99,7 +101,7 @@ async function main(): Promise<void> {
 
   const timer = setInterval(() => {
     void flushQueue().catch((error) => {
-      // eslint-disable-next-line no-console
+       
       console.error("flush failed", error.message);
     });
   }, config.flushIntervalMs);
@@ -111,7 +113,7 @@ async function main(): Promise<void> {
       await flushQueue();
       process.exit(0);
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.error("flush failed during shutdown:", error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
@@ -126,7 +128,7 @@ async function main(): Promise<void> {
 }
 
 void main().catch((error) => {
-  // eslint-disable-next-line no-console
+   
   console.error(error);
   process.exit(1);
 });

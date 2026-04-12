@@ -1,12 +1,14 @@
 import "./env.js";
 import http from "node:http";
+
+import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import cors from "cors";
 import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
-import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
+
 import { CassSearchClient } from "./cass-search.js";
-import { getHubCorsOptions } from "./cors.js";
 import { createConversationDetailHandler } from "./conversation-detail.js";
+import { getHubCorsOptions } from "./cors.js";
 import { applyEvent, computeStatus, expireEntities, type EntityState } from "./state.js";
 
 interface IngestBatchBody {
@@ -89,7 +91,7 @@ function broadcast(payload: unknown): void {
       try {
         client.send(encoded);
       } catch (error) {
-        // eslint-disable-next-line no-console
+         
         console.error("WebSocket send failed:", error instanceof Error ? error.message : String(error));
       }
     }

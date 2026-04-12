@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 import type { CollectorPlugin } from "@agent-watch/plugin-sdk";
 
 export function extractSourceFromDirName(dirName: string): string | null {
@@ -33,13 +34,13 @@ export async function loadPluginsFromSources(sources: string[]): Promise<Collect
     try {
       const mod = (await import(pkgName)) as { default?: () => CollectorPlugin };
       if (typeof mod.default !== "function") {
-        // eslint-disable-next-line no-console
+         
         console.warn(`[collector] plugin ${pkgName} missing default factory export`);
         continue;
       }
       loaded.push(mod.default());
     } catch (error) {
-      // eslint-disable-next-line no-console
+       
       console.warn(`[collector] failed to load ${pkgName}:`, error instanceof Error ? error.message : String(error));
     }
   }
