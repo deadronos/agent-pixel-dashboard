@@ -1,6 +1,11 @@
 import path from "node:path";
 
-export type SessionSource = "codex" | "claude" | "gemini" | "openclaw" | "copilot";
+export const sessionSources = ["codex", "claude", "gemini", "openclaw", "copilot"] as const;
+export type SessionSource = (typeof sessionSources)[number];
+
+export function isSessionSource(value: string): value is SessionSource {
+  return (sessionSources as readonly string[]).includes(value);
+}
 
 function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, "/");

@@ -38,15 +38,26 @@ export interface CollectorPlugin {
   watch(_root: DiscoveredSessionRoot, _ctx: WatchContext): Promise<WatchHandle>;
 }
 
-export { isActiveSessionFile, matchesSessionFile, type SessionSource } from "./session-detection.js";
+export { isActiveSessionFile, isSessionSource, matchesSessionFile, sessionSources, type SessionSource } from "./session-detection.js";
 export {
+  buildNormalizedSessionEvent,
+  collectJsonlFiles,
+  createNormalizedSessionParser,
   createJsonFileIngestState,
   createJsonlIngestState,
   discoverSessionRoots,
   expandHomePath,
+  getDefaultActivityScore,
   getStringValue,
   ingestJsonFile,
   ingestJsonlFile,
   watchJsonSessionFiles,
-  watchJsonlSessionFiles
+  watchJsonlSessionFiles,
+  watchJsonlSessionFilesByPolling,
+  type BuildNormalizedSessionEventOptions,
+  type CollectFilesOptions,
+  type NormalizedSessionParserConfig,
+  type NormalizedSessionParserContext,
+  type PollingJsonlWatchOptions,
+  type ResolvedSessionParserContext
 } from "./watch-helpers.js";

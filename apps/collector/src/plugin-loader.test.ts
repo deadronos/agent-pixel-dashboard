@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  collectorPluginRegistry,
+  discoverCollectorPlugins,
   extractSourceFromDirName,
   resolvePluginDir,
   resolveRequestedSources
 } from "./plugin-loader.js";
 
-describe("collectorPluginRegistry", () => {
-  it("declares explicit package mappings for known sources", () => {
-    expect(collectorPluginRegistry).toContainEqual(
+describe("discoverCollectorPlugins", () => {
+  it("reads plugin metadata from the filesystem", async () => {
+    const registrations = await discoverCollectorPlugins(resolvePluginDir("plugins"));
+    expect(registrations).toContainEqual(
       expect.objectContaining({
         source: "codex",
         directoryName: "plugin-codex-watch",

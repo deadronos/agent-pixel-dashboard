@@ -3,44 +3,20 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { CollectorPlugin } from "@agent-watch/plugin-sdk";
+import { isSessionSource, type SessionSource } from "@agent-watch/plugin-sdk";
 
 export interface CollectorPluginRegistration {
-  source: string;
+  source: SessionSource;
   directoryName: string;
   packageName: string;
 }
 
-export const collectorPluginRegistry: CollectorPluginRegistration[] = [
-  {
-    source: "claude",
-    directoryName: "plugin-claude-watch",
-    packageName: "@agent-watch/plugin-claude-watch"
-  },
-  {
-    source: "codex",
-    directoryName: "plugin-codex-watch",
-    packageName: "@agent-watch/plugin-codex-watch"
-  },
-  {
-    source: "copilot",
-    directoryName: "plugin-copilot-watch",
-    packageName: "@agent-watch/plugin-copilot-watch"
-  },
-  {
-    source: "gemini",
-    directoryName: "plugin-gemini-watch",
-    packageName: "@agent-watch/plugin-gemini-watch"
-  },
-  {
-    source: "openclaw",
-    directoryName: "plugin-openclaw-watch",
-    packageName: "@agent-watch/plugin-openclaw-watch"
+export function extractSourceFromDirName(dirName: string): SessionSource | null {
+  const match = /^plugin-(.+)-watch$/.exec(dirName.trim());
+  if (!match) {
+    return null;
   }
-];
-
-export function extractSourceFromDirName(dirName: string): string | null {
-  const registration = collectorPluginRegistry.find((entry) => entry.directoryName === dirName);
-  return registration?.source ?? null;
+  return isSessionSource(match[1]) ? match[1] : null;
 }
 
 export function resolveRequestedSources(requestedSources: string[], discoveredSources: string[]): string[] {
@@ -51,19 +27,56 @@ export function resolveRequestedSources(requestedSources: string[], discoveredSo
   return normalized.filter((source) => discoveredSources.includes(source));
 }
 
-export async function discoverPluginSources(pluginDir: string): Promise<string[]> {
-  const entries = await fs.readdir(pluginDir, { withFileTypes: true });
-  const availableDirectories = new Set(entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name));
+async function readPluginRegistration(pluginDir: string, dirName: string): Promise<CollectorPluginRegistration | null> {
+  const source = extractSourceFromDirName(dirName);
+  if (!source) {
+    return null;
+  }
 
-  return collectorPluginRegistry
-    .filter((entry) => availableDirectories.has(entry.directoryName))
-    .map((entry) => entry.source);
+  try {
+    const packageJson = JSON.parse(
+      await fs.readFile(path.join(pluginDir, dirName, "package.json"), "utf8")
+    ) as { name?: unknown };
+    const packageName = typeof packageJson.name === "string" ? packageJson.name : "";
+    if (!packageName) {
+      return null;
+    }
+
+    return {
+      source,
+      directoryName: dirName,
+      packageName
+    };
+  } catch {
+    return null;
+  }
 }
 
-export async function loadPluginsFromSources(sources: string[]): Promise<CollectorPlugin[]> {
+export async function discoverCollectorPlugins(pluginDir: string): Promise<CollectorPluginRegistration[]> {
+  const entries = await fs.readdir(pluginDir, { withFileTypes: true });
+  const registrations = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => readPluginRegistration(pluginDir, entry.name))
+  );
+
+  return registrations
+    .filter((registration): registration is CollectorPluginRegistration => registration !== null)
+    .sort((left, right) => left.source.localeCompare(right.source));
+}
+
+export async function discoverPluginSources(pluginDir: string): Promise<string[]> {
+  const registrations = await discoverCollectorPlugins(pluginDir);
+  return registrations.map((entry) => entry.source);
+}
+
+export async function loadPluginsFromSources(
+  sources: string[],
+  registrations: readonly CollectorPluginRegistration[]
+): Promise<CollectorPlugin[]> {
   const loaded: CollectorPlugin[] = [];
   for (const source of sources) {
-    const registration = collectorPluginRegistry.find((entry) => entry.source === source);
+    const registration = registrations.find((entry) => entry.source === source);
     if (!registration) {
       continue;
     }

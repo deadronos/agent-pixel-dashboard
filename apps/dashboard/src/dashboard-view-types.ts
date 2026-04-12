@@ -2,7 +2,7 @@ import type { DashboardEntity as SharedDashboardEntity } from "@agent-watch/even
 
 import type { ResolvedSettings, ViewerPreferences } from "./dashboard-settings.js";
 
-export type DashboardEntity = Pick<
+export type GroupedDashboardEntity = Pick<
   SharedDashboardEntity,
   | "entityId"
   | "source"
@@ -33,7 +33,7 @@ export interface EntityStatusSummary {
   latestEventAt?: string;
 }
 
-export interface DashboardEntityGroup<T extends DashboardEntity = DashboardEntity> {
+export interface DashboardEntityGroup<T extends GroupedDashboardEntity = GroupedDashboardEntity> {
   groupId: string;
   sessionId: string | undefined;
   source: string;

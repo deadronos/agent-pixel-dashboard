@@ -1,7 +1,7 @@
 import type { ViewerPreferences } from "./dashboard-settings.js";
-import type { DashboardEntity, FilterOptions, ViewSettings } from "./dashboard-view-types.js";
+import type { FilterOptions, GroupedDashboardEntity, ViewSettings } from "./dashboard-view-types.js";
 
-export function getFilterOptions(entities: readonly DashboardEntity[]): FilterOptions {
+export function getFilterOptions(entities: readonly GroupedDashboardEntity[]): FilterOptions {
   return {
     sources: [...new Set(entities.map((entity) => entity.source))].sort(),
     entityKinds: [...new Set(entities.map((entity) => entity.entityKind))].sort()
@@ -25,7 +25,7 @@ export function pruneViewerPreferencesToLiveOptions(
   return pruned;
 }
 
-export function matchesFilters(entity: DashboardEntity, settings: ViewSettings): boolean {
+export function matchesFilters(entity: GroupedDashboardEntity, settings: ViewSettings): boolean {
   if (settings.filters.hideDormant && entity.currentStatus === "dormant") {
     return false;
   }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import {
   buildConversationDetailUrl,
+  parseConversationDetailPayload,
   type ConversationDetailPayload
 } from "./conversation-detail.js";
 import type { DashboardEntityGroup } from "./dashboard-view.js";
@@ -45,7 +46,7 @@ export function useConversationDetail(
           throw new Error(`detail request failed (${response.status})`);
         }
 
-        return (await response.json()) as ConversationDetailPayload;
+        return parseConversationDetailPayload(await response.json());
       })
       .then((nextDetail) => {
         if (!controller.signal.aborted) {

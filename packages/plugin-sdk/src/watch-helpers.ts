@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { setInterval } from "node:timers";
 
-import type { NormalizedEvent } from "@agent-watch/event-schema";
+import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import { watch } from "chokidar";
 
 import { isActiveSessionFile } from "./session-detection.js";
@@ -30,6 +31,59 @@ type ParseRecord<T extends NormalizedEvent> = (
 ) => T;
 /* eslint-enable no-unused-vars */
 
+export interface NormalizedSessionParserContext {
+  sourceHost: string;
+  filePath: string;
+  record: Record<string, unknown>;
+  sequence: number;
+  fallbackTimestamp: string;
+}
+
+export interface ResolvedSessionParserContext extends NormalizedSessionParserContext {
+  sessionId: string;
+  eventType: string;
+}
+
+export interface BuildNormalizedSessionEventOptions {
+  source: string;
+  sourceHost: string;
+  filePath: string;
+  sessionId?: string;
+  entityId: string;
+  parentEntityId?: string | null;
+  entityKind?: NormalizedEvent["entityKind"];
+  displayName: string;
+  timestamp?: string;
+  eventType?: string;
+  status?: unknown;
+  summary?: string;
+  defaultSummary: string;
+  detail?: string;
+  activityScore?: number;
+  sequence: number;
+  meta?: Record<string, unknown>;
+}
+
+export interface NormalizedSessionParserConfig {
+  source: string;
+  defaultDisplayName: string;
+  defaultSummary: string;
+  /* eslint-disable no-unused-vars */
+  getSessionId: (ctx: NormalizedSessionParserContext) => string;
+  getEntityId?: (ctx: ResolvedSessionParserContext) => string;
+  getDisplayName?: (ctx: ResolvedSessionParserContext) => string;
+  getTimestamp?: (ctx: NormalizedSessionParserContext) => string | undefined;
+  getEventType?: (ctx: NormalizedSessionParserContext) => string | undefined;
+  getStatus?: (ctx: ResolvedSessionParserContext) => unknown;
+  getSummary?: (ctx: ResolvedSessionParserContext) => string | undefined;
+  getDetail?: (ctx: ResolvedSessionParserContext) => string | undefined;
+  getActivityScore?: (ctx: ResolvedSessionParserContext) => number | undefined;
+  getMeta?: (ctx: ResolvedSessionParserContext) => Record<string, unknown> | undefined;
+  getParentEntityId?: (ctx: ResolvedSessionParserContext) => string | null | undefined;
+  getEntityKind?: (ctx: ResolvedSessionParserContext) => NormalizedEvent["entityKind"];
+  /* eslint-enable no-unused-vars */
+}
+
 function splitCsv(value: string | undefined): string[] {
   return (value ?? "")
     .split(",")
@@ -56,6 +110,92 @@ export function expandHomePath(input: string): string {
 
 export function getStringValue(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
+}
+
+export function getDefaultActivityScore(eventType: string, rawActivityScore: unknown): number {
+  if (typeof rawActivityScore === "number") {
+    return Math.max(0, Math.min(1, rawActivityScore));
+  }
+  return eventType.startsWith("tool") ? 0.85 : 0.6;
+}
+
+export function buildNormalizedSessionEvent(options: BuildNormalizedSessionEventOptions): NormalizedEvent {
+  const eventType = options.eventType?.trim() || "message";
+  const timestamp = options.timestamp?.trim();
+  const detail = options.detail?.trim() || undefined;
+  const summary = options.summary?.trim() || options.defaultSummary;
+  const event = {
+    eventId: makeDeterministicEventId({
+      source: options.source,
+      entityId: options.entityId,
+      timestamp: timestamp || new Date(0).toISOString(),
+      eventType,
+      sequence: options.sequence,
+      detail: detail || summary
+    }),
+    timestamp: timestamp || new Date().toISOString(),
+    source: options.source,
+    sourceHost: options.sourceHost,
+    entityId: options.entityId,
+    sessionId: options.sessionId,
+    parentEntityId: options.parentEntityId ?? null,
+    entityKind: options.entityKind ?? "session",
+    displayName: options.displayName,
+    eventType,
+    status: typeof options.status === "string" ? options.status : "active",
+    summary,
+    detail,
+    activityScore: Math.max(0, Math.min(1, options.activityScore ?? 0.5)),
+    sequence: options.sequence,
+    meta: options.meta
+  };
+
+  return parseNormalizedEvent(event);
+}
+
+export function createNormalizedSessionParser(config: NormalizedSessionParserConfig) {
+  return (
+    sourceHost: string,
+    filePath: string,
+    record: Record<string, unknown>,
+    sequence: number,
+    fallbackTimestamp: string
+  ): NormalizedEvent => {
+    const baseContext: NormalizedSessionParserContext = {
+      sourceHost,
+      filePath,
+      record,
+      sequence,
+      fallbackTimestamp
+    };
+    const sessionId = config.getSessionId(baseContext);
+    const eventType = config.getEventType?.(baseContext) || "message";
+    const resolvedContext: ResolvedSessionParserContext = {
+      ...baseContext,
+      sessionId,
+      eventType
+    };
+
+    return buildNormalizedSessionEvent({
+      source: config.source,
+      sourceHost,
+      filePath,
+      sessionId,
+      entityId: config.getEntityId?.(resolvedContext) ?? `${config.source}:session:${sessionId}`,
+      parentEntityId: config.getParentEntityId?.(resolvedContext),
+      entityKind: config.getEntityKind?.(resolvedContext) ?? "session",
+      displayName: config.getDisplayName?.(resolvedContext) ?? config.defaultDisplayName,
+      timestamp: config.getTimestamp?.(baseContext) ?? fallbackTimestamp,
+      eventType,
+      status: config.getStatus?.(resolvedContext) ?? "active",
+      summary: config.getSummary?.(resolvedContext),
+      defaultSummary: config.defaultSummary,
+      detail: config.getDetail?.(resolvedContext),
+      activityScore: config.getActivityScore?.(resolvedContext),
+      sequence,
+      meta: config.getMeta?.(resolvedContext)
+    });
+  };
 }
 
 export async function discoverSessionRoots(
@@ -324,6 +464,147 @@ export async function watchJsonSessionFiles<T extends NormalizedEvent>(
   return {
     close: async () => {
       await watcher.close();
+    }
+  };
+}
+
+export interface CollectFilesOptions {
+  maxDepth: number;
+  maxFiles: number;
+}
+
+export async function collectJsonlFiles(root: string, options: CollectFilesOptions): Promise<string[]> {
+  const results: string[] = [];
+
+  async function walk(current: string, depth: number): Promise<void> {
+    if (results.length >= options.maxFiles) {
+      return;
+    }
+
+    let entries;
+    try {
+      entries = await fs.readdir(current, { withFileTypes: true, encoding: "utf8" });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (results.length >= options.maxFiles) {
+        return;
+      }
+      const fullPath = path.join(current, entry.name);
+      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+        results.push(fullPath);
+        continue;
+      }
+      if (entry.isDirectory() && depth < options.maxDepth) {
+        await walk(fullPath, depth + 1);
+      }
+    }
+  }
+
+  await walk(root, 0);
+  return results;
+}
+
+export interface PollingJsonlWatchOptions<T extends NormalizedEvent> {
+  // eslint-disable-next-line no-unused-vars
+  matchFile: (filePath: string) => boolean;
+  activeWindowMs: number;
+  parseRecord: ParseRecord<T>;
+  scanIntervalMs: number;
+  maxDepth: number;
+  maxFiles: number;
+}
+
+export async function watchJsonlSessionFilesByPolling<T extends NormalizedEvent>(
+  root: DiscoveredSessionRoot,
+  ctx: WatchContext,
+  options: PollingJsonlWatchOptions<T>
+): Promise<WatchHandle> {
+  const ingestState = createJsonlIngestState();
+  const mtimes = new Map<string, number>();
+  let closed = false;
+  let scanning = false;
+
+  const scan = async (): Promise<void> => {
+    if (closed || scanning) {
+      return;
+    }
+    scanning = true;
+    try {
+      const files = await collectJsonlFiles(root.path, {
+        maxDepth: options.maxDepth,
+        maxFiles: options.maxFiles
+      });
+      const live = new Set(files);
+
+      for (const filePath of files) {
+        if (!options.matchFile(filePath)) {
+          continue;
+        }
+        let stat;
+        try {
+          stat = await fs.stat(filePath);
+        } catch {
+          continue;
+        }
+
+        const previousMtime = mtimes.get(filePath);
+        const previousOffset = ingestState.offsets.get(filePath);
+        if (previousMtime === undefined) {
+          mtimes.set(filePath, stat.mtimeMs);
+          ingestState.offsets.set(filePath, stat.size);
+          continue;
+        }
+
+        if (!isActiveSessionFile(stat.mtimeMs, Date.now(), options.activeWindowMs)) {
+          mtimes.set(filePath, stat.mtimeMs);
+          ingestState.offsets.set(filePath, stat.size);
+          continue;
+        }
+
+        if (stat.size === previousOffset && stat.mtimeMs <= previousMtime) {
+          continue;
+        }
+
+        await ingestJsonlFile(filePath, ingestState, {
+          reason: "change",
+          stat: {
+            size: stat.size,
+            mtime: stat.mtime,
+            mtimeMs: stat.mtimeMs
+          },
+          parseRecord: options.parseRecord,
+          onRecord: ctx.onEvent,
+          onError: ctx.onError
+        });
+        mtimes.set(filePath, stat.mtimeMs);
+      }
+
+      for (const key of [...mtimes.keys()]) {
+        if (!live.has(key)) {
+          mtimes.delete(key);
+          ingestState.offsets.delete(key);
+          ingestState.sequences.delete(key);
+        }
+      }
+    } catch (error) {
+      ctx.onError(error as Error);
+    } finally {
+      scanning = false;
+    }
+  };
+
+  await scan();
+  const timer = setInterval(() => {
+    void scan();
+  }, options.scanIntervalMs);
+
+  return {
+    close: async () => {
+      closed = true;
+      clearInterval(timer);
     }
   };
 }

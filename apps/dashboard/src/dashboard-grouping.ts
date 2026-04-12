@@ -1,17 +1,17 @@
 import { matchesFilters } from "./dashboard-filters.js";
-import type { DashboardEntity, DashboardEntityGroup, ViewSettings } from "./dashboard-view-types.js";
+import type { DashboardEntityGroup, GroupedDashboardEntity, ViewSettings } from "./dashboard-view-types.js";
 
 function getSortableTimestamp(timestamp: string): number {
   const parsed = new Date(timestamp).getTime();
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
-function getGroupingKey(entity: DashboardEntity): string {
+function getGroupingKey(entity: GroupedDashboardEntity): string {
   const stableId = entity.groupKey?.trim() || entity.sessionId?.trim() || entity.parentEntityId?.trim() || entity.entityId;
   return `${entity.source}|${stableId}`;
 }
 
-function pickRepresentative<T extends DashboardEntity>(
+function pickRepresentative<T extends GroupedDashboardEntity>(
   members: readonly T[],
   sortMode: ViewSettings["layout"]["sortMode"]
 ): T {
@@ -33,7 +33,7 @@ function pickRepresentative<T extends DashboardEntity>(
   })[0];
 }
 
-export function getVisibleEntityGroups<T extends DashboardEntity>(
+export function getVisibleEntityGroups<T extends GroupedDashboardEntity>(
   entities: readonly T[],
   settings: ViewSettings
 ): DashboardEntityGroup<T>[] {
@@ -107,6 +107,6 @@ export function findVisibleEntityGroupById<T extends DashboardEntityGroup>(
   return groups.find((group) => group.groupId === groupId);
 }
 
-export function getVisibleEntities<T extends DashboardEntity>(entities: readonly T[], settings: ViewSettings): T[] {
+export function getVisibleEntities<T extends GroupedDashboardEntity>(entities: readonly T[], settings: ViewSettings): T[] {
   return getVisibleEntityGroups(entities, settings).map((group) => group.representative);
 }

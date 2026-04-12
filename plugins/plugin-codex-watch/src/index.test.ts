@@ -1,46 +1,39 @@
-import os from "node:os";
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
-function expandHome(input: string): string {
-  if (!input.startsWith("~")) {
-    return input;
-  }
-  return path.join(os.homedir(), input.slice(1));
-}
+import { parseCodexRecord } from "./index.js";
 
-function getString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
+describe("parseCodexRecord", () => {
+  it("normalizes codex rollout records into shared events", () => {
+    const event = parseCodexRecord(
+      "workstation",
+      "/Users/test/.codex/sessions/rollout-abc123.jsonl",
+      {
+        payload: {
+          id: "abc123",
+          type: "tool_call",
+          name: "bash",
+          arguments: "ls -la",
+          model: "gpt-5.4"
+        },
+        status: "active",
+        activityScore: 0.9
+      },
+      2,
+      "2026-04-09T20:15:31.000Z"
+    );
 
-describe("codex watch helpers", () => {
-  describe("expandHome", () => {
-    it("returns input unchanged when not starting with ~", () => {
-      const input = "/some/path";
-      expect(expandHome(input)).toBe(input);
+    expect(event).toMatchObject({
+      source: "codex",
+      entityId: "codex:session:abc123",
+      sessionId: "abc123",
+      eventType: "tool_call",
+      summary: "bash",
+      detail: "ls -la",
+      activityScore: 0.9
     });
-
-    it("expands ~ to home directory", () => {
-      const input = "~/some/path";
-      expect(expandHome(input)).toBe(path.join(os.homedir(), "some/path"));
-    });
-  });
-
-  describe("getString", () => {
-    it("returns string value as-is", () => {
-      expect(getString("hello")).toBe("hello");
-    });
-
-    it("returns fallback for non-string values", () => {
-      expect(getString(123, "fallback")).toBe("fallback");
-      expect(getString(null, "fallback")).toBe("fallback");
-      expect(getString(undefined, "fallback")).toBe("fallback");
-      expect(getString({}, "fallback")).toBe("fallback");
-    });
-
-    it("uses empty string as default fallback", () => {
-      expect(getString(123)).toBe("");
+    expect(event.meta).toMatchObject({
+      toolName: "bash",
+      model: "gpt-5.4"
     });
   });
 });

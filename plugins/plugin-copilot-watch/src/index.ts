@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -9,7 +8,9 @@ import type {
   WatchHandle
 } from "@agent-watch/plugin-sdk";
 import {
+  createNormalizedSessionParser,
   discoverSessionRoots,
+  getDefaultActivityScore,
   getStringValue,
   matchesSessionFile,
   watchJsonlSessionFiles,
@@ -20,83 +21,46 @@ const DEFAULT_PATHS = ["~/.copilot/session-state", "~/.copilot"];
 const SOURCE: SessionSource = "copilot";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
-function parseRecord(
-  sourceHost: string,
-  filePath: string,
-  record: Record<string, unknown>,
-  sequence: number,
-  fallbackTimestamp: string
-): NormalizedEvent {
-  const data =
-    record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : undefined;
-  const sessionId =
+function getData(record: Record<string, unknown>): Record<string, unknown> | undefined {
+  return record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : undefined;
+}
+
+export const parseCopilotRecord = createNormalizedSessionParser({
+  source: "copilot",
+  defaultDisplayName: "Copilot",
+  defaultSummary: "Copilot activity",
+  getSessionId: ({ filePath, record }) =>
     getStringValue(record.session_id) ||
     getStringValue(record.sessionId) ||
     getStringValue(record.conversation_id) ||
-    getStringValue(data?.sessionId) ||
-    path.basename(path.dirname(filePath));
-  const entityId = `copilot:session:${sessionId}`;
-
-  const timestamp =
+    getStringValue(getData(record)?.sessionId) ||
+    path.basename(path.dirname(filePath)),
+  getTimestamp: ({ record, fallbackTimestamp }) =>
     getStringValue(record.timestamp) ||
     getStringValue(record.created_at) ||
     getStringValue(record.createdAt) ||
-    fallbackTimestamp;
-
-  const eventType =
-    getStringValue(record.event_type) ||
-    getStringValue(record.type) ||
-    "message";
-
-  const summary =
-    getStringValue(data?.content) ||
+    fallbackTimestamp,
+  getEventType: ({ record }) => getStringValue(record.event_type) || getStringValue(record.type) || "message",
+  getStatus: ({ record }) => getStringValue(record.status) || "active",
+  getSummary: ({ record }) =>
+    getStringValue(getData(record)?.content) ||
     getStringValue(record.summary) ||
     getStringValue(record.message) ||
     getStringValue(record.text) ||
-    getStringValue(record.content);
-
-  const detail =
-    getStringValue(data?.selectedModel) ||
+    getStringValue(record.content),
+  getDetail: ({ record }) =>
+    getStringValue(getData(record)?.selectedModel) ||
     getStringValue(record.detail) ||
     getStringValue(record.content) ||
-    getStringValue(record.raw);
-
-  const rawActivity = typeof record.activityScore === "number" ? record.activityScore : undefined;
-  const activityScore = rawActivity ?? (eventType.startsWith("tool") ? 0.85 : 0.6);
-
-  const event = {
-    eventId: makeDeterministicEventId({
-      source: "copilot",
-      entityId,
-      timestamp,
-      eventType,
-      sequence,
-      detail: detail || summary
-    }),
-    timestamp,
-    source: "copilot",
-    sourceHost,
-    entityId,
-    sessionId,
-    parentEntityId: null,
-    entityKind: "session" as const,
-    displayName: "Copilot",
-    eventType,
-    status: getStringValue(record.status, "active"),
-    summary: summary || "Copilot activity",
-    detail: detail || undefined,
-    activityScore: Math.max(0, Math.min(1, activityScore)),
-    sequence,
-    meta: {
-      filePath,
-      toolName: getStringValue(record.toolName) || getStringValue(record.tool_name),
-      rawType: getStringValue(record.type),
-      model: getStringValue(data?.selectedModel) || undefined
-    }
-  };
-
-  return parseNormalizedEvent(event);
-}
+    getStringValue(record.raw),
+  getActivityScore: ({ eventType, record }) => getDefaultActivityScore(eventType, record.activityScore),
+  getMeta: ({ filePath, record }) => ({
+    filePath,
+    toolName: getStringValue(record.toolName) || getStringValue(record.tool_name),
+    rawType: getStringValue(record.type),
+    model: getStringValue(getData(record)?.selectedModel) || undefined
+  })
+});
 
 export class CopilotWatchPlugin implements CollectorPlugin {
   id = "plugin-copilot-watch";
@@ -116,7 +80,7 @@ export class CopilotWatchPlugin implements CollectorPlugin {
       matchFile: MATCH_SESSION_FILE,
       activeWindowMs,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
-        parseRecord(root.host, filePath, record, sequence, fallbackTimestamp)
+        parseCopilotRecord(root.host, filePath, record, sequence, fallbackTimestamp)
     });
   }
 }

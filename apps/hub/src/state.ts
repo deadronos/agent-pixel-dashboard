@@ -1,4 +1,5 @@
 import {
+  projectEntityEvent,
   resolveEntityStatus,
   type DashboardEntity,
   type EntityStatus,
@@ -28,34 +29,10 @@ export function expireEntities(entities: Map<string, EntityState>, now: Date): v
   }
 }
 
-function statusFromEvent(event: NormalizedEvent): EntityStatus {
-  if (event.eventType === "error") {
-    return "error";
-  }
-  if (event.eventType === "session_finished" || event.eventType === "session_archived") {
-    return "done";
-  }
-  return "active";
-}
-
 export function applyEvent(previous: EntityState | undefined, event: NormalizedEvent): EntityState {
-  const status = statusFromEvent(event);
-  const recentEvents = [...(previous?.recentEvents ?? []), event.eventId].slice(-MAX_RECENT_EVENTS);
-  const groupKey = typeof event.meta?.groupKey === "string" ? event.meta.groupKey : previous?.groupKey;
-
+  const next = projectEntityEvent(previous, event, { maxRecentEvents: MAX_RECENT_EVENTS });
   return {
-    entityId: event.entityId,
-    source: event.source,
-    sourceHost: event.sourceHost,
-    displayName: event.displayName,
-    entityKind: event.entityKind,
-    sessionId: event.sessionId,
-    parentEntityId: event.parentEntityId,
-    groupKey,
-    currentStatus: status,
-    lastEventAt: event.timestamp,
-    lastSummary: event.summary ?? previous?.lastSummary,
-    activityScore: event.activityScore ?? previous?.activityScore ?? 0.5,
-    recentEvents
+    ...next,
+    recentEvents: next.recentEvents ?? []
   };
 }

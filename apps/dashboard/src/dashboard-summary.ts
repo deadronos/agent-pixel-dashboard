@@ -1,11 +1,11 @@
-import type { DashboardEntity, EntityStatusSummary } from "./dashboard-view-types.js";
+import type { EntityStatusSummary, GroupedDashboardEntity } from "./dashboard-view-types.js";
 
 function getSortableTimestamp(timestamp: string): number {
   const parsed = new Date(timestamp).getTime();
   return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed;
 }
 
-export function getEntityStatusSummary(entities: readonly DashboardEntity[]): EntityStatusSummary {
+export function getEntityStatusSummary(entities: readonly GroupedDashboardEntity[]): EntityStatusSummary {
   const summary: EntityStatusSummary = {
     total: entities.length,
     active: 0,

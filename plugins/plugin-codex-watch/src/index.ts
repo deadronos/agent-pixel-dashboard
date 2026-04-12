@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
@@ -9,7 +8,9 @@ import type {
   WatchHandle
 } from "@agent-watch/plugin-sdk";
 import {
+  createNormalizedSessionParser,
   discoverSessionRoots,
+  getDefaultActivityScore,
   getStringValue,
   matchesSessionFile,
   watchJsonlSessionFiles,
@@ -20,82 +21,50 @@ const DEFAULT_PATHS = ["~/.codex/sessions", "~/.codex"];
 const SOURCE: SessionSource = "codex";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
-function parseRecord(
-  sourceHost: string,
-  filePath: string,
-  record: Record<string, unknown>,
-  sequence: number,
-  fallbackTimestamp: string
-): NormalizedEvent {
-  const payload =
-    record.payload && typeof record.payload === "object" ? (record.payload as Record<string, unknown>) : undefined;
-  const sessionId =
+function getPayload(record: Record<string, unknown>): Record<string, unknown> | undefined {
+  return record.payload && typeof record.payload === "object" ? (record.payload as Record<string, unknown>) : undefined;
+}
+
+export const parseCodexRecord = createNormalizedSessionParser({
+  source: "codex",
+  defaultDisplayName: "Codex",
+  defaultSummary: "Codex activity",
+  getSessionId: ({ filePath, record }) =>
     getStringValue(record.session_id) ||
     getStringValue(record.sessionId) ||
-    getStringValue(payload?.id) ||
-    path.basename(filePath).replace(/^rollout-/, "").replace(/\.jsonl$/, "");
-  const entityId = `codex:session:${sessionId}`;
-
-  const timestamp =
+    getStringValue(getPayload(record)?.id) ||
+    path.basename(filePath).replace(/^rollout-/, "").replace(/\.jsonl$/, ""),
+  getTimestamp: ({ record, fallbackTimestamp }) =>
     getStringValue(record.timestamp) ||
     getStringValue(record.created_at) ||
-    fallbackTimestamp;
-
-  const eventType =
+    fallbackTimestamp,
+  getEventType: ({ record }) =>
     getStringValue(record.event_type) ||
     getStringValue(record.type) ||
-    getStringValue(payload?.type) ||
-    "message";
-
-  const summary =
-    getStringValue(payload?.name) ||
-    getStringValue(payload?.command) ||
+    getStringValue(getPayload(record)?.type) ||
+    "message",
+  getStatus: ({ record }) => getStringValue(record.status) || "active",
+  getSummary: ({ record }) =>
+    getStringValue(getPayload(record)?.name) ||
+    getStringValue(getPayload(record)?.command) ||
     getStringValue(record.summary) ||
     getStringValue(record.message) ||
-    getStringValue(record.text);
-
-  const detail =
-    getStringValue(payload?.arguments) ||
+    getStringValue(record.text),
+  getDetail: ({ record }) =>
+    getStringValue(getPayload(record)?.arguments) ||
     getStringValue(record.detail) ||
-    getStringValue(record.content);
-
-  const rawActivity = typeof record.activityScore === "number" ? record.activityScore : undefined;
-  const activityScore = rawActivity ?? (eventType.startsWith("tool") ? 0.85 : 0.6);
-
-  const event = {
-    eventId: makeDeterministicEventId({
-      source: "codex",
-      entityId,
-      timestamp,
-      eventType,
-      sequence,
-      detail: detail || summary
-    }),
-    timestamp,
-    source: "codex",
-    sourceHost,
-    entityId,
-    sessionId,
-    parentEntityId: null,
-    entityKind: "session" as const,
-    displayName: "Codex",
-    eventType,
-    status: getStringValue(record.status, "active"),
-    summary: summary || "Codex activity",
-    detail: detail || undefined,
-    activityScore: Math.max(0, Math.min(1, activityScore)),
-    sequence,
-    meta: {
-      filePath,
-      toolName:
-        getStringValue(payload?.name) || getStringValue(record.toolName) || getStringValue(record.tool_name),
-      rawType: getStringValue(record.type),
-      model: getStringValue(payload?.model) || undefined
-    }
-  };
-
-  return parseNormalizedEvent(event);
-}
+    getStringValue(record.content),
+  getActivityScore: ({ eventType, record }) => getDefaultActivityScore(eventType, record.activityScore),
+  getMeta: ({ filePath, record }) => ({
+    filePath,
+    toolName:
+      getStringValue(getPayload(record)?.name) ||
+      getStringValue(record.toolName) ||
+      getStringValue(record.tool_name),
+    rawType: getStringValue(record.type),
+    model: getStringValue(getPayload(record)?.model) || undefined
+  })
+});
 
 export class CodexWatchPlugin implements CollectorPlugin {
   id = "plugin-codex-watch";
@@ -115,7 +84,7 @@ export class CodexWatchPlugin implements CollectorPlugin {
       matchFile: MATCH_SESSION_FILE,
       activeWindowMs,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
-        parseRecord(root.host, filePath, record, sequence, fallbackTimestamp)
+        parseCodexRecord(root.host, filePath, record, sequence, fallbackTimestamp)
     });
   }
 }

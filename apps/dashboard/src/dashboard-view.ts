@@ -7,9 +7,9 @@ export { getFilterOptions, pruneViewerPreferencesToLiveOptions } from "./dashboa
 export { getGridColumns } from "./dashboard-layout.js";
 export { getEmptyStateMessage, getEntityStatusSummary } from "./dashboard-summary.js";
 export type {
-  DashboardEntity,
   DashboardEntityGroup,
   EntityStatusSummary,
   FilterOptions,
+  GroupedDashboardEntity,
   ViewSettings
 } from "./dashboard-view-types.js";

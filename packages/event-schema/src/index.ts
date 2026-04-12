@@ -25,7 +25,7 @@ export const NormalizedEventSchema = z.object({
   entityKind: EntityKindSchema,
   displayName: z.string().min(1),
   eventType: z.string().min(1),
-  status: z.string().min(1).optional(),
+  status: EntityStatusSchema.optional(),
   summary: z.string().min(1).optional(),
   detail: z.string().min(1).optional(),
   activityScore: z.number().min(0).max(1).optional(),
@@ -78,6 +78,41 @@ export const HubMessageSchema = z.union([HubHelloMessageSchema, HubEventsMessage
 
 export type HubMessage = z.infer<typeof HubMessageSchema>;
 
+export const IngestBatchBodySchema = z.object({
+  collectorId: z.string().min(1).optional(),
+  events: z.array(z.unknown())
+});
+export interface IngestBatchBody {
+  collectorId?: string;
+  events: unknown[];
+}
+
+export const ConversationDetailLookupSchema = z.object({
+  source: z.string().min(1),
+  sessionId: z.string().min(1).optional(),
+  entityId: z.string().min(1).optional()
+});
+
+export type ConversationDetailLookup = z.infer<typeof ConversationDetailLookupSchema>;
+
+export const ConversationDetailGroupSchema = z.object({
+  source: z.string().min(1),
+  sessionId: z.string().min(1).optional(),
+  entityId: z.string().min(1).optional()
+});
+
+export const ConversationDetailPayloadSchema = z.object({
+  groupId: z.string().min(1),
+  group: ConversationDetailGroupSchema,
+  matchedBy: z.enum(["session", "entity"]),
+  current: DashboardEntitySchema,
+  representative: DashboardEntitySchema,
+  members: z.array(DashboardEntitySchema),
+  recentEvents: z.array(NormalizedEventSchema)
+});
+
+export type ConversationDetailPayload = z.infer<typeof ConversationDetailPayloadSchema>;
+
 export function parseNormalizedEvent(input: unknown): NormalizedEvent {
   return NormalizedEventSchema.parse(input);
 }
@@ -88,6 +123,14 @@ export function parseHubStateResponse(input: unknown): HubStateResponse {
 
 export function parseHubMessage(input: unknown): HubMessage {
   return HubMessageSchema.parse(input);
+}
+
+export function parseIngestBatchBody(input: unknown): IngestBatchBody {
+  return IngestBatchBodySchema.parse(input);
+}
+
+export function parseConversationDetailPayload(input: unknown): ConversationDetailPayload {
+  return ConversationDetailPayloadSchema.parse(input);
 }
 
 export function makeDeterministicEventId(input: {
@@ -114,9 +157,6 @@ export function getStatusFromTimestamp(timestamp: string, now = new Date()): Ent
   if (ageMs <= LIVE_STATUS_WINDOWS_MS.sleepy) {
     return "sleepy";
   }
-  if (ageMs <= LIVE_STATUS_WINDOWS_MS.dormant) {
-    return "dormant";
-  }
   return "dormant";
 }
 
@@ -130,4 +170,57 @@ export function resolveEntityStatus(
   }
 
   return getStatusFromTimestamp(lastEventAt, now);
+}
+
+export interface ProjectEntityOptions {
+  maxRecentEvents?: number;
+}
+
+const DEFAULT_MAX_RECENT_EVENTS = 25;
+
+function clampActivityScore(value: number | undefined): number {
+  return Math.max(0, Math.min(1, value ?? 0.5));
+}
+
+function getProjectedStatus(event: NormalizedEvent): EntityStatus {
+  if (event.eventType === "error") {
+    return "error";
+  }
+  if (event.eventType === "session_finished" || event.eventType === "session_archived") {
+    return "done";
+  }
+  return event.status ?? "active";
+}
+
+export function projectEntityEvent(
+  previous: DashboardEntity | undefined,
+  event: NormalizedEvent,
+  options: ProjectEntityOptions = {}
+): DashboardEntity {
+  const maxRecentEvents = options.maxRecentEvents ?? DEFAULT_MAX_RECENT_EVENTS;
+  const recentEvents = [...(previous?.recentEvents ?? []), event.eventId].slice(-maxRecentEvents);
+  const groupKey = typeof event.meta?.groupKey === "string" ? event.meta.groupKey : previous?.groupKey;
+
+  return {
+    entityId: event.entityId,
+    source: event.source,
+    sourceHost: event.sourceHost,
+    displayName: event.displayName,
+    entityKind: event.entityKind,
+    sessionId: event.sessionId,
+    parentEntityId: event.parentEntityId,
+    groupKey,
+    currentStatus: getProjectedStatus(event),
+    lastEventAt: event.timestamp,
+    lastSummary: event.summary ?? previous?.lastSummary,
+    activityScore: clampActivityScore(event.activityScore ?? previous?.activityScore),
+    recentEvents
+  };
+}
+
+export function normalizeDashboardEntity(entity: DashboardEntity, now = new Date()): DashboardEntity {
+  return {
+    ...entity,
+    currentStatus: resolveEntityStatus(entity.currentStatus, entity.lastEventAt, now)
+  };
 }

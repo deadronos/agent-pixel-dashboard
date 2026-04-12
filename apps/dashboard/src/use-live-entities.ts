@@ -1,7 +1,8 @@
 import {
+  normalizeDashboardEntity,
   parseHubMessage,
   parseHubStateResponse,
-  resolveEntityStatus,
+  projectEntityEvent,
   type DashboardEntity,
   type NormalizedEvent
 } from "@agent-watch/event-schema";
@@ -12,36 +13,14 @@ export type ConnectionState = "connecting" | "live" | "offline";
 const MAX_RECENT_EVENTS = 25;
 
 function normalizeEntity(entity: DashboardEntity): DashboardEntity {
-  return {
-    ...entity,
-    currentStatus: resolveEntityStatus(entity.currentStatus, entity.lastEventAt)
-  };
+  return normalizeDashboardEntity(entity);
 }
 
 function applyIncomingEvents(previous: DashboardEntity[], events: readonly NormalizedEvent[]): DashboardEntity[] {
   const next = new Map(previous.map((entity) => [entity.entityId, entity]));
 
   for (const event of events) {
-    const previousEntity = next.get(event.entityId);
-    const groupKey =
-      typeof event.meta?.groupKey === "string" ? event.meta.groupKey : previousEntity?.groupKey;
-    const recentEvents = [...(previousEntity?.recentEvents ?? []), event.eventId].slice(-MAX_RECENT_EVENTS);
-
-    next.set(event.entityId, {
-      entityId: event.entityId,
-      source: event.source,
-      sourceHost: event.sourceHost,
-      displayName: event.displayName,
-      entityKind: event.entityKind,
-      sessionId: event.sessionId,
-      parentEntityId: event.parentEntityId,
-      groupKey,
-      currentStatus: resolveEntityStatus(previousEntity?.currentStatus, event.timestamp),
-      lastEventAt: event.timestamp,
-      lastSummary: event.summary ?? previousEntity?.lastSummary,
-      activityScore: event.activityScore ?? previousEntity?.activityScore ?? 0.5,
-      recentEvents
-    });
+    next.set(event.entityId, projectEntityEvent(next.get(event.entityId), event, { maxRecentEvents: MAX_RECENT_EVENTS }));
   }
 
   return [...next.values()];

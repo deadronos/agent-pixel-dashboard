@@ -12,6 +12,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@agent-watch/env-loader": "0.1.0",
     "@agent-watch/event-schema": "0.1.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
