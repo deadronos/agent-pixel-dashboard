@@ -1,8 +1,6 @@
 import path from "node:path";
 
-function getString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
+import { getStringValue } from "@agent-watch/plugin-sdk";
 
 export function encodeSessionKey(value: string): string {
   return encodeURIComponent(value);
@@ -20,10 +18,10 @@ export function getOpenClawAgentId(filePath: string): string | null {
 
 export function buildOpenClawSessionId(agentId: string | null, filePath: string, record?: Record<string, unknown>): string {
   const explicitId =
-    getString(record?.session_id) ||
-    getString(record?.sessionId) ||
-    getString(record?.conversation_id) ||
-    getString(record?.id);
+    getStringValue(record?.session_id) ||
+    getStringValue(record?.sessionId) ||
+    getStringValue(record?.conversation_id) ||
+    getStringValue(record?.id);
   const fileId = explicitId || path.basename(filePath).replace(/\.jsonl$/, "");
   if (!agentId) {
     return `openclaw-${fileId}`;

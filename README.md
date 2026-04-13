@@ -67,6 +67,7 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `MAX_BATCH_BYTES` (default: `1500000`, keep below hub JSON body limit)
 - `WATCH_SOURCES` (default: `auto`; use `auto|all` or comma-separated sources)
 - `PLUGINS_DIR` (optional; defaults to repo `plugins/` directory for autodiscovery)
+- `SESSION_ROOTS` (optional comma-separated global override for all source watchers; falls back to `CODEX_SESSION_ROOTS` for compatibility)
 - `CODEX_SESSION_ROOTS` (optional comma-separated session roots)
 - `CLAUDE_SESSION_ROOTS` (optional comma-separated session roots)
 - `GEMINI_SESSION_ROOTS` (optional comma-separated session roots)
