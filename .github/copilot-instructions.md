@@ -40,4 +40,3 @@
   - `dashboard-view.ts` for filtering, sorting, and layout helpers
 - Viewer preferences are stored in localStorage and sanitized before use.
 - Hub ingest at `POST /api/events/batch` requires the bearer token from `HUB_AUTH_TOKEN`.
-

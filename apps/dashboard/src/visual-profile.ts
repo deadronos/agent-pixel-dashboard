@@ -1,12 +1,12 @@
-import type { ThemePreset, VisualRule } from "./dashboard-settings.js";
+import type { ThemePreset, VisualRule } from './dashboard-settings.js';
 import {
   getFaceMood,
   getNamedPalette,
   getProviderPalette,
   isNamedPaletteId,
   type EntityStatus,
-  type ProviderPalette
-} from "./face.js";
+  type ProviderPalette,
+} from './face.js';
 
 interface VisualEntity {
   source: string;
@@ -17,49 +17,49 @@ interface VisualEntity {
 
 export interface AgentVisualProfile {
   palette: ProviderPalette;
-  faceVariant: "rounded-bot" | "square-bot" | "soft-ghost" | "terminal-sprite";
-  animationMode: "full" | "reduced";
-  accentStyle: "sparkles" | "antenna" | "frame" | "none";
-  artStyleMode: "config" | "playful" | "minimal";
+  faceVariant: 'rounded-bot' | 'square-bot' | 'soft-ghost' | 'terminal-sprite';
+  animationMode: 'full' | 'reduced';
+  accentStyle: 'sparkles' | 'antenna' | 'frame' | 'none';
+  artStyleMode: 'config' | 'playful' | 'minimal';
 }
 
 export function resolveVisualProfile(
   entity: VisualEntity,
   theme: ThemePreset,
   rules: VisualRule[],
-  artStyleMode: "config" | "playful" | "minimal" = "config"
+  artStyleMode: 'config' | 'playful' | 'minimal' = 'config'
 ): AgentVisualProfile {
   const match = getBestMatchingRule(entity, rules);
 
   const mood = getFaceMood(entity.currentStatus);
   const palette = resolvePalette(match?.themePalette, entity.source);
   const animationMode =
-    artStyleMode === "minimal"
-      ? "reduced"
-      : theme.id === "night-shift" && mood.animation === "pulse"
-        ? "reduced"
-        : "full";
+    artStyleMode === 'minimal'
+      ? 'reduced'
+      : theme.id === 'night-shift' && mood.animation === 'pulse'
+        ? 'reduced'
+        : 'full';
 
-  let accentStyle: AgentVisualProfile["accentStyle"] = mood.sparkle ? "sparkles" : "none";
-  if (artStyleMode === "playful") {
+  let accentStyle: AgentVisualProfile['accentStyle'] = mood.sparkle ? 'sparkles' : 'none';
+  if (artStyleMode === 'playful') {
     accentStyle =
-      entity.entityKind === "worker"
-        ? "antenna"
-        : entity.entityKind === "session"
-          ? "frame"
+      entity.entityKind === 'worker'
+        ? 'antenna'
+        : entity.entityKind === 'session'
+          ? 'frame'
           : mood.sparkle
-            ? "sparkles"
-            : "frame";
-  } else if (artStyleMode === "minimal") {
-    accentStyle = "none";
+            ? 'sparkles'
+            : 'frame';
+  } else if (artStyleMode === 'minimal') {
+    accentStyle = 'none';
   }
 
   return {
     palette,
-    faceVariant: match?.faceVariant ?? "rounded-bot",
+    faceVariant: match?.faceVariant ?? 'rounded-bot',
     animationMode,
     accentStyle,
-    artStyleMode
+    artStyleMode,
   };
 }
 
@@ -96,7 +96,10 @@ function getBestMatchingRule(entity: VisualEntity, rules: VisualRule[]): VisualR
   return bestRule;
 }
 
-function resolvePalette(themePalette: VisualRule["themePalette"] | undefined, fallbackKey: string): ProviderPalette {
+function resolvePalette(
+  themePalette: VisualRule['themePalette'] | undefined,
+  fallbackKey: string
+): ProviderPalette {
   if (!themePalette) {
     return getProviderPalette(fallbackKey);
   }

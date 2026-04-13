@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState } from 'react';
 
-import type { DashboardConfig, ResolvedSettings, ViewerPreferences } from "./dashboard-settings.js";
+import type { DashboardConfig, ResolvedSettings, ViewerPreferences } from './dashboard-settings.js';
 
 interface SettingsPanelProps {
   config: DashboardConfig;
@@ -20,7 +20,7 @@ export function SettingsPanel({
   entityKindOptions = [],
   viewerPreferences = {},
   onChange,
-  onReset
+  onReset,
 }: SettingsPanelProps) {
   const maxAgentsShown = settings.layout.maxAgentsShown;
   const density = settings.layout.density;
@@ -34,10 +34,10 @@ export function SettingsPanel({
   function toggleSelection(
     currentSelection: string[],
     value: string,
-    key: "visibleSources" | "visibleEntityKinds"
+    key: 'visibleSources' | 'visibleEntityKinds'
   ) {
     const next = currentSelection.includes(value)
-      ? currentSelection.filter((entry) => entry !== value)
+      ? currentSelection.filter(entry => entry !== value)
       : [...currentSelection, value];
 
     onChange({ [key]: next } as ViewerPreferences);
@@ -56,7 +56,7 @@ export function SettingsPanel({
         className="settings-panel__toggle"
         aria-expanded={open}
         aria-label="Open settings panel"
-        onClick={() => setOpen((s) => !s)}
+        onClick={() => setOpen(s => !s)}
         title="Open settings panel"
       >
         <span className="settings-panel__toggle-icon" aria-hidden="true">
@@ -65,7 +65,10 @@ export function SettingsPanel({
         <span className="settings-panel__toggle-label">Settings</span>
       </button>
 
-      <aside className={`settings-panel ${open ? "settings-panel--open" : ""}`} aria-label="Dashboard settings">
+      <aside
+        className={`settings-panel ${open ? 'settings-panel--open' : ''}`}
+        aria-label="Dashboard settings"
+      >
         <div className="settings-panel__header">
           <div>
             <p className="eyebrow">Local overrides</p>
@@ -86,7 +89,7 @@ export function SettingsPanel({
                 max="24"
                 step="1"
                 value={maxAgentsShown}
-                onChange={(event) => onChange({ maxAgentsShown: Number(event.target.value) })}
+                onChange={event => onChange({ maxAgentsShown: Number(event.target.value) })}
               />
               <output>{maxAgentsShown}</output>
             </div>
@@ -97,9 +100,9 @@ export function SettingsPanel({
             <select
               value={themeId}
               disabled={!config.ui.allowViewerThemeOverride}
-              onChange={(event) => onChange({ themeId: event.target.value })}
+              onChange={event => onChange({ themeId: event.target.value })}
             >
-              {config.themes.presets.map((theme) => (
+              {config.themes.presets.map(theme => (
                 <option key={theme.id} value={theme.id}>
                   {theme.label}
                 </option>
@@ -111,9 +114,9 @@ export function SettingsPanel({
             <span>Art style</span>
             <select
               value={settings.artStyleMode}
-              onChange={(event) =>
+              onChange={event =>
                 onChange({
-                  artStyleMode: event.target.value as "config" | "playful" | "minimal"
+                  artStyleMode: event.target.value as 'config' | 'playful' | 'minimal',
                 })
               }
             >
@@ -127,7 +130,9 @@ export function SettingsPanel({
             <span>Density</span>
             <select
               value={density}
-              onChange={(event) => onChange({ density: event.target.value as "compact" | "comfortable" })}
+              onChange={event =>
+                onChange({ density: event.target.value as 'compact' | 'comfortable' })
+              }
             >
               <option value="comfortable">Comfortable</option>
               <option value="compact">Compact</option>
@@ -138,7 +143,9 @@ export function SettingsPanel({
             <span>Sort by</span>
             <select
               value={sortMode}
-              onChange={(event) => onChange({ sortMode: event.target.value as "activity" | "recent" })}
+              onChange={event =>
+                onChange({ sortMode: event.target.value as 'activity' | 'recent' })
+              }
             >
               <option value="activity">Activity</option>
               <option value="recent">Recent</option>
@@ -149,7 +156,7 @@ export function SettingsPanel({
             <input
               type="checkbox"
               checked={hideDormant}
-              onChange={(event) => onChange({ hideDormant: event.target.checked })}
+              onChange={event => onChange({ hideDormant: event.target.checked })}
             />
             <span>Hide dormant</span>
           </label>
@@ -158,7 +165,7 @@ export function SettingsPanel({
             <input
               type="checkbox"
               checked={hideDone}
-              onChange={(event) => onChange({ hideDone: event.target.checked })}
+              onChange={event => onChange({ hideDone: event.target.checked })}
             />
             <span>Hide done</span>
           </label>
@@ -169,12 +176,12 @@ export function SettingsPanel({
             </div>
             <div className="settings-panel__filter-list">
               {sourceOptions.length > 0 ? (
-                sourceOptions.map((source) => (
+                sourceOptions.map(source => (
                   <label key={source} className="settings-panel__check">
                     <input
                       type="checkbox"
                       checked={selectedSources.includes(source)}
-                      onChange={() => toggleSelection(selectedSources, source, "visibleSources")}
+                      onChange={() => toggleSelection(selectedSources, source, 'visibleSources')}
                     />
                     <span>{source}</span>
                   </label>
@@ -193,13 +200,13 @@ export function SettingsPanel({
             </div>
             <div className="settings-panel__filter-list">
               {entityKindOptions.length > 0 ? (
-                entityKindOptions.map((entityKind) => (
+                entityKindOptions.map(entityKind => (
                   <label key={entityKind} className="settings-panel__check">
                     <input
                       type="checkbox"
                       checked={selectedEntityKinds.includes(entityKind)}
                       onChange={() =>
-                        toggleSelection(selectedEntityKinds, entityKind, "visibleEntityKinds")
+                        toggleSelection(selectedEntityKinds, entityKind, 'visibleEntityKinds')
                       }
                     />
                     <span>{entityKind}</span>

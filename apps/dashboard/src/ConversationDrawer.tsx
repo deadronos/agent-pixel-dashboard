@@ -1,8 +1,8 @@
-import { useEffect, type CSSProperties } from "react";
+import { useEffect, type CSSProperties } from 'react';
 
-import type { ConversationDetailPayload } from "./conversation-detail.js";
-import type { DashboardEntityGroup } from "./dashboard-view.js";
-import type { EntityStatus } from "./face.js";
+import type { ConversationDetailPayload } from './conversation-detail.js';
+import type { DashboardEntityGroup } from './dashboard-view.js';
+import type { EntityStatus } from './face.js';
 
 type DrawerMember = {
   entityId: string;
@@ -16,7 +16,13 @@ type DrawerMember = {
 
 export type ConversationDrawerGroup = Pick<
   DashboardEntityGroup,
-  "groupId" | "source" | "sessionId" | "currentStatus" | "lastEventAt" | "activityScore" | "memberCount"
+  | 'groupId'
+  | 'source'
+  | 'sessionId'
+  | 'currentStatus'
+  | 'lastEventAt'
+  | 'activityScore'
+  | 'memberCount'
 > & {
   representative: DrawerMember;
   members: DrawerMember[];
@@ -38,10 +44,10 @@ function formatTimestamp(timestamp: string): string {
   }
 
   return value.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
   });
 }
 
@@ -55,7 +61,7 @@ export function ConversationDrawer({
   detail,
   loading,
   error,
-  onClose
+  onClose,
 }: ConversationDrawerProps) {
   useEffect(() => {
     if (!open) {
@@ -63,14 +69,14 @@ export function ConversationDrawer({
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         onClose();
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [open, onClose]);
 
@@ -79,13 +85,16 @@ export function ConversationDrawer({
   }
 
   const selectedDetail = detail?.current ?? detail?.representative ?? null;
-  const title = selectedDetail?.displayName ?? group.representative.displayName ?? group.representative.entityId;
+  const title =
+    selectedDetail?.displayName ??
+    group.representative.displayName ??
+    group.representative.entityId;
   const sourceHost = selectedDetail?.sourceHost ?? group.representative.sourceHost;
   const summary = selectedDetail?.lastSummary ?? group.representative.lastSummary;
   const members = detail?.members ?? group.members;
   const events = detail?.recentEvents ?? [];
   const drawerStyle = {
-    "--drawer-bg": "rgba(248, 250, 255, 0.94)"
+    '--drawer-bg': 'rgba(248, 250, 255, 0.94)',
   } as CSSProperties;
 
   return (
@@ -108,7 +117,9 @@ export function ConversationDrawer({
             <h2 id="conversation-drawer-title">{title}</h2>
             <p className="conversation-drawer__identity">
               {group.source}
-              {group.sessionId ? ` · session ${group.sessionId}` : ` · ${group.representative.entityId}`}
+              {group.sessionId
+                ? ` · session ${group.sessionId}`
+                : ` · ${group.representative.entityId}`}
             </p>
           </div>
           <button type="button" className="conversation-drawer__close" onClick={onClose}>
@@ -136,9 +147,12 @@ export function ConversationDrawer({
             </div>
           </div>
           <p className="conversation-drawer__summary-copy">
-            {summary ?? "No summary yet. The drawer will keep the selected group visible while detail loads."}
+            {summary ??
+              'No summary yet. The drawer will keep the selected group visible while detail loads.'}
           </p>
-          {sourceHost ? <p className="conversation-drawer__source">Source host: {sourceHost}</p> : null}
+          {sourceHost ? (
+            <p className="conversation-drawer__source">Source host: {sourceHost}</p>
+          ) : null}
         </section>
 
         <section className="conversation-drawer__section">
@@ -147,7 +161,7 @@ export function ConversationDrawer({
             <span>{members.length}</span>
           </div>
           <ul className="conversation-drawer__list">
-            {members.map((member) => (
+            {members.map(member => (
               <li key={member.entityId} className="conversation-drawer__item">
                 <div>
                   <strong>{getMemberLabel(member)}</strong>
@@ -174,7 +188,7 @@ export function ConversationDrawer({
             <p className="conversation-drawer__state">No recent activity yet.</p>
           ) : (
             <ol className="conversation-drawer__timeline">
-              {events.map((event) => (
+              {events.map(event => (
                 <li key={event.eventId} className="conversation-drawer__event">
                   <div className="conversation-drawer__event-head">
                     <strong>{event.summary ?? event.detail ?? event.eventType}</strong>
@@ -183,7 +197,9 @@ export function ConversationDrawer({
                   <p>
                     {event.displayName} {event.status}
                   </p>
-                  {event.detail ? <p className="conversation-drawer__event-detail">{event.detail}</p> : null}
+                  {event.detail ? (
+                    <p className="conversation-drawer__event-detail">{event.detail}</p>
+                  ) : null}
                 </li>
               ))}
             </ol>

@@ -1,5 +1,5 @@
 :root {
-  font-family: "IBM Plex Sans", "Avenir Next", "Trebuchet MS", sans-serif;
+  font-family: 'IBM Plex Sans', 'Avenir Next', 'Trebuchet MS', sans-serif;
   color: #132032;
   background:
     radial-gradient(circle at 20% 15%, rgba(255, 247, 186, 0.88), transparent 28%),
@@ -34,7 +34,7 @@ body {
 }
 
 .dashboard::before {
-  content: "";
+  content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -292,7 +292,7 @@ body {
 }
 
 .settings-panel__field select,
-.settings-panel__field input[type="range"] {
+.settings-panel__field input[type='range'] {
   width: 100%;
 }
 
@@ -358,14 +358,16 @@ body {
   overflow: hidden;
   border: 1px solid rgba(19, 32, 50, 0.1);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.04)),
-    var(--panel-bg),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.04)), var(--panel-bg),
     var(--card-bg);
   box-shadow:
     0 24px 42px rgba(28, 50, 87, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
   isolation: isolate;
-  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
 }
 
 .face-card:focus-visible {
@@ -374,7 +376,7 @@ body {
 }
 
 .face-card::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background:
@@ -383,18 +385,14 @@ body {
   pointer-events: none;
 }
 
-.face-card[data-art-style="playful"]::before {
+.face-card[data-art-style='playful']::before {
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.58), transparent 42%),
-    repeating-linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.12) 0 1px,
-      transparent 1px 7px
-    ),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0 1px, transparent 1px 7px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(14, 24, 40, 0.18));
 }
 
-.face-card[data-art-style="minimal"]::before {
+.face-card[data-art-style='minimal']::before {
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.44), transparent 48%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(14, 24, 40, 0.08));
@@ -407,13 +405,15 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 
-.face-card[data-art-style="playful"].active,
-.face-card[data-art-style="playful"].selected {
+.face-card[data-art-style='playful'].active,
+.face-card[data-art-style='playful'].selected {
   transform: translateY(-5px);
 }
 
-.face-card[data-art-style="playful"].selected::after {
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.58), 0 0 0 2px color-mix(in srgb, var(--card-accent) 62%, transparent);
+.face-card[data-art-style='playful'].selected::after {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.58),
+    0 0 0 2px color-mix(in srgb, var(--card-accent) 62%, transparent);
 }
 
 .face-card.selected {
@@ -425,7 +425,7 @@ body {
 }
 
 .face-card.selected::after {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0.35rem;
   border: 1px solid color-mix(in srgb, var(--card-accent) 68%, white);
@@ -440,7 +440,7 @@ body {
     0 0 48px color-mix(in srgb, var(--card-glow) 55%, transparent);
 }
 
-.face-card[data-art-style="playful"].active:not(.selected) {
+.face-card[data-art-style='playful'].active:not(.selected) {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.58),
     0 30px 60px rgba(28, 50, 87, 0.2),
@@ -469,8 +469,8 @@ body {
   padding: 2.65rem 1rem 3.15rem;
 }
 
-.face-card[data-art-style="playful"] .face-card__canvas-wrap::after {
-  content: "";
+.face-card[data-art-style='playful'] .face-card__canvas-wrap::after {
+  content: '';
   position: absolute;
   inset: 0.6rem;
   border-radius: 1.2rem;
@@ -604,7 +604,7 @@ body {
 }
 
 .conversation-drawer__panel::before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -805,8 +805,8 @@ body {
     transform: none;
   }
 
-  .face-card[data-art-style="playful"].active,
-  .face-card[data-art-style="playful"].selected {
+  .face-card[data-art-style='playful'].active,
+  .face-card[data-art-style='playful'].selected {
     transform: none;
   }
 }
