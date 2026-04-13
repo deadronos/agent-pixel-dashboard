@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 export interface CollectOptions {
   maxDepth: number;
@@ -16,7 +16,7 @@ export async function collectJsonlFiles(root: string, options: CollectOptions): 
 
     let entries;
     try {
-      entries = await fs.readdir(current, { withFileTypes: true, encoding: "utf8" });
+      entries = await fs.readdir(current, { withFileTypes: true, encoding: 'utf8' });
     } catch {
       return;
     }
@@ -26,7 +26,7 @@ export async function collectJsonlFiles(root: string, options: CollectOptions): 
         return;
       }
       const fullPath = path.join(current, entry.name);
-      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+      if (entry.isFile() && entry.name.endsWith('.jsonl')) {
         results.push(fullPath);
         continue;
       }

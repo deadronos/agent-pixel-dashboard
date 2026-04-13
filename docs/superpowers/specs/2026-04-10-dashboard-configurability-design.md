@@ -59,8 +59,8 @@ Conceptually:
 interface DashboardConfig {
   layout: {
     maxAgentsShown: number;
-    density: "compact" | "comfortable";
-    sortMode: "activity" | "recent";
+    density: 'compact' | 'comfortable';
+    sortMode: 'activity' | 'recent';
   };
   filters: {
     hideDormant: boolean;
@@ -162,9 +162,9 @@ Outputs:
 ```ts
 interface AgentVisualProfile {
   palette: ProviderPalette;
-  faceVariant: "rounded-bot" | "square-bot" | "soft-ghost" | "terminal-sprite";
-  animationMode: "full" | "reduced";
-  accentStyle?: "sparkles" | "antenna" | "frame" | "none";
+  faceVariant: 'rounded-bot' | 'square-bot' | 'soft-ghost' | 'terminal-sprite';
+  animationMode: 'full' | 'reduced';
+  accentStyle?: 'sparkles' | 'antenna' | 'frame' | 'none';
 }
 ```
 

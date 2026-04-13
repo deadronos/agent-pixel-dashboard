@@ -1,4 +1,4 @@
-import type { EntityStatus } from "./face.js";
+import type { EntityStatus } from './face.js';
 
 export interface ConversationDetailLookup {
   source: string;
@@ -47,21 +47,24 @@ export interface ConversationDetailPayload {
     sessionId?: string;
     entityId?: string;
   };
-  matchedBy: "session" | "entity";
+  matchedBy: 'session' | 'entity';
   current: ConversationDetailEntity;
   representative: ConversationDetailEntity;
   members: ConversationDetailEntity[];
   recentEvents: ConversationDetailEvent[];
 }
 
-export function buildConversationDetailUrl(hubHttp: string, group: ConversationDetailLookup): string {
-  const normalizedHubHttp = hubHttp.replace(/\/+$/, "");
+export function buildConversationDetailUrl(
+  hubHttp: string,
+  group: ConversationDetailLookup
+): string {
+  const normalizedHubHttp = hubHttp.replace(/\/+$/, '');
   const params = new URLSearchParams({ source: group.source });
 
   if (group.sessionId?.trim()) {
-    params.set("sessionId", group.sessionId.trim());
+    params.set('sessionId', group.sessionId.trim());
   } else {
-    params.set("entityId", group.entityId);
+    params.set('entityId', group.entityId);
   }
 
   return `${normalizedHubHttp}/api/entity-detail?${params.toString()}`;

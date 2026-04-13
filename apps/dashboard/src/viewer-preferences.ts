@@ -1,6 +1,6 @@
-import type { ViewerPreferences } from "./dashboard-settings.js";
+import type { ViewerPreferences } from './dashboard-settings.js';
 
-const STORAGE_KEY = "agent-watch.viewer-preferences";
+const STORAGE_KEY = 'agent-watch.viewer-preferences';
 
 function getStorage(): Storage | null {
   try {
@@ -11,19 +11,21 @@ function getStorage(): Storage | null {
 }
 
 function isStoredPreferences(value: unknown): value is ViewerPreferences {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function isValidDensity(value: unknown): value is NonNullable<ViewerPreferences["density"]> {
-  return value === "compact" || value === "comfortable";
+function isValidDensity(value: unknown): value is NonNullable<ViewerPreferences['density']> {
+  return value === 'compact' || value === 'comfortable';
 }
 
-function isValidSortMode(value: unknown): value is NonNullable<ViewerPreferences["sortMode"]> {
-  return value === "activity" || value === "recent";
+function isValidSortMode(value: unknown): value is NonNullable<ViewerPreferences['sortMode']> {
+  return value === 'activity' || value === 'recent';
 }
 
-function isValidArtStyleMode(value: unknown): value is NonNullable<ViewerPreferences["artStyleMode"]> {
-  return value === "config" || value === "playful" || value === "minimal";
+function isValidArtStyleMode(
+  value: unknown
+): value is NonNullable<ViewerPreferences['artStyleMode']> {
+  return value === 'config' || value === 'playful' || value === 'minimal';
 }
 
 function sanitizeStringArray(value: unknown): string[] | undefined {
@@ -31,7 +33,7 @@ function sanitizeStringArray(value: unknown): string[] | undefined {
     return undefined;
   }
 
-  const sanitized = value.filter((entry): entry is string => typeof entry === "string");
+  const sanitized = value.filter((entry): entry is string => typeof entry === 'string');
   return sanitized.length > 0 ? sanitized : [];
 }
 
@@ -43,7 +45,11 @@ function sanitizeViewerPreferences(value: unknown): ViewerPreferences {
   const preferences: ViewerPreferences = {};
   const maxAgentsShown = value.maxAgentsShown;
 
-  if (typeof maxAgentsShown === "number" && Number.isInteger(maxAgentsShown) && maxAgentsShown > 0) {
+  if (
+    typeof maxAgentsShown === 'number' &&
+    Number.isInteger(maxAgentsShown) &&
+    maxAgentsShown > 0
+  ) {
     preferences.maxAgentsShown = maxAgentsShown;
   }
   if (isValidDensity(value.density)) {
@@ -52,13 +58,13 @@ function sanitizeViewerPreferences(value: unknown): ViewerPreferences {
   if (isValidSortMode(value.sortMode)) {
     preferences.sortMode = value.sortMode;
   }
-  if (typeof value.hideDormant === "boolean") {
+  if (typeof value.hideDormant === 'boolean') {
     preferences.hideDormant = value.hideDormant;
   }
-  if (typeof value.hideDone === "boolean") {
+  if (typeof value.hideDone === 'boolean') {
     preferences.hideDone = value.hideDone;
   }
-  if (typeof value.themeId === "string") {
+  if (typeof value.themeId === 'string') {
     preferences.themeId = value.themeId;
   }
   if (isValidArtStyleMode(value.artStyleMode)) {

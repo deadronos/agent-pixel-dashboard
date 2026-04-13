@@ -1,8 +1,8 @@
-import crypto from "node:crypto";
+import crypto from 'node:crypto';
 
-import { z } from "zod";
+import { z } from 'zod';
 
-export const EntityKindSchema = z.enum(["session", "subagent", "tool-run"]);
+export const EntityKindSchema = z.enum(['session', 'subagent', 'tool-run']);
 
 export const NormalizedEventSchema = z.object({
   eventId: z.string().min(1),
@@ -21,7 +21,7 @@ export const NormalizedEventSchema = z.object({
   activityScore: z.number().min(0).max(1).optional(),
   turnId: z.string().min(1).optional(),
   sequence: z.number().int().nonnegative().optional(),
-  meta: z.record(z.unknown()).optional()
+  meta: z.record(z.unknown()).optional(),
 });
 
 export type NormalizedEvent = z.infer<typeof NormalizedEventSchema>;
@@ -38,7 +38,7 @@ export function makeDeterministicEventId(input: {
   sequence?: number;
   detail?: string;
 }): string {
-  const key = `${input.source}|${input.entityId}|${input.timestamp}|${input.eventType}|${input.sequence ?? ""}|${input.detail ?? ""}`;
-  const digest = crypto.createHash("sha256").update(key).digest("hex").slice(0, 16);
+  const key = `${input.source}|${input.entityId}|${input.timestamp}|${input.eventType}|${input.sequence ?? ''}|${input.detail ?? ''}`;
+  const digest = crypto.createHash('sha256').update(key).digest('hex').slice(0, 16);
   return `evt_${digest}`;
 }

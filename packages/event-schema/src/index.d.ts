@@ -1,6 +1,7 @@
-import { z } from "zod";
-export declare const EntityKindSchema: z.ZodEnum<["session", "subagent", "tool-run"]>;
-export declare const NormalizedEventSchema: z.ZodObject<{
+import { z } from 'zod';
+export declare const EntityKindSchema: z.ZodEnum<['session', 'subagent', 'tool-run']>;
+export declare const NormalizedEventSchema: z.ZodObject<
+  {
     eventId: z.ZodString;
     timestamp: z.ZodString;
     source: z.ZodString;
@@ -8,7 +9,7 @@ export declare const NormalizedEventSchema: z.ZodObject<{
     entityId: z.ZodString;
     sessionId: z.ZodOptional<z.ZodString>;
     parentEntityId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    entityKind: z.ZodEnum<["session", "subagent", "tool-run"]>;
+    entityKind: z.ZodEnum<['session', 'subagent', 'tool-run']>;
     displayName: z.ZodString;
     eventType: z.ZodString;
     status: z.ZodOptional<z.ZodString>;
@@ -18,13 +19,16 @@ export declare const NormalizedEventSchema: z.ZodObject<{
     turnId: z.ZodOptional<z.ZodString>;
     sequence: z.ZodOptional<z.ZodNumber>;
     meta: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
-}, "strip", z.ZodTypeAny, {
+  },
+  'strip',
+  z.ZodTypeAny,
+  {
     eventId: string;
     timestamp: string;
     source: string;
     sourceHost: string;
     entityId: string;
-    entityKind: "session" | "subagent" | "tool-run";
+    entityKind: 'session' | 'subagent' | 'tool-run';
     displayName: string;
     eventType: string;
     sessionId?: string | undefined;
@@ -36,13 +40,14 @@ export declare const NormalizedEventSchema: z.ZodObject<{
     turnId?: string | undefined;
     sequence?: number | undefined;
     meta?: Record<string, unknown> | undefined;
-}, {
+  },
+  {
     eventId: string;
     timestamp: string;
     source: string;
     sourceHost: string;
     entityId: string;
-    entityKind: "session" | "subagent" | "tool-run";
+    entityKind: 'session' | 'subagent' | 'tool-run';
     displayName: string;
     eventType: string;
     sessionId?: string | undefined;
@@ -54,14 +59,15 @@ export declare const NormalizedEventSchema: z.ZodObject<{
     turnId?: string | undefined;
     sequence?: number | undefined;
     meta?: Record<string, unknown> | undefined;
-}>;
+  }
+>;
 export type NormalizedEvent = z.infer<typeof NormalizedEventSchema>;
 export declare function parseNormalizedEvent(input: unknown): NormalizedEvent;
 export declare function makeDeterministicEventId(input: {
-    source: string;
-    entityId: string;
-    timestamp: string;
-    eventType: string;
-    sequence?: number;
-    detail?: string;
+  source: string;
+  entityId: string;
+  timestamp: string;
+  eventType: string;
+  sequence?: number;
+  detail?: string;
 }): string;

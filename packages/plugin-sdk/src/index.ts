@@ -1,4 +1,4 @@
-import type { NormalizedEvent } from "@agent-watch/event-schema";
+import type { NormalizedEvent } from '@agent-watch/event-schema';
 
 export interface DiscoveredSessionRoot {
   id: string;
@@ -38,4 +38,8 @@ export interface CollectorPlugin {
   watch(_root: DiscoveredSessionRoot, _ctx: WatchContext): Promise<WatchHandle>;
 }
 
-export { isActiveSessionFile, matchesSessionFile, type SessionSource } from "./session-detection.js";
+export {
+  isActiveSessionFile,
+  matchesSessionFile,
+  type SessionSource,
+} from './session-detection.js';

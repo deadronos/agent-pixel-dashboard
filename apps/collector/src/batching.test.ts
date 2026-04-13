@@ -1,77 +1,77 @@
-import type { NormalizedEvent } from "@agent-watch/event-schema";
-import { describe, expect, it } from "vitest";
+import type { NormalizedEvent } from '@agent-watch/event-schema';
+import { describe, expect, it } from 'vitest';
 
-import { buildSizedBatches } from "./batching.js";
+import { buildSizedBatches } from './batching.js';
 
 function mkEvent(id: number, detailSize = 200): NormalizedEvent {
   return {
     eventId: `evt_${id}`,
-    timestamp: "2026-04-09T20:15:31.000Z",
-    source: "codex",
-    sourceHost: "workstation",
+    timestamp: '2026-04-09T20:15:31.000Z',
+    source: 'codex',
+    sourceHost: 'workstation',
     entityId: `codex:session:${id}`,
     sessionId: `${id}`,
     parentEntityId: null,
-    entityKind: "session",
-    displayName: "Codex",
-    eventType: "message",
-    status: "active",
-    summary: "test",
-    detail: "x".repeat(detailSize),
+    entityKind: 'session',
+    displayName: 'Codex',
+    eventType: 'message',
+    status: 'active',
+    summary: 'test',
+    detail: 'x'.repeat(detailSize),
     activityScore: 0.5,
     sequence: id,
-    meta: {}
+    meta: {},
   };
 }
 
-describe("buildSizedBatches", () => {
-  it("splits into multiple batches under byte budget", () => {
+describe('buildSizedBatches', () => {
+  it('splits into multiple batches under byte budget', () => {
     const events = Array.from({ length: 10 }, (_v, i) => mkEvent(i + 1, 400));
     const batches = buildSizedBatches(events, {
-      collectorId: "collector-a",
-      maxBytes: 2200
+      collectorId: 'collector-a',
+      maxBytes: 2200,
     });
     expect(batches.length).toBeGreaterThan(1);
     for (const body of batches) {
-      expect(Buffer.byteLength(body, "utf8")).toBeLessThanOrEqual(2200);
+      expect(Buffer.byteLength(body, 'utf8')).toBeLessThanOrEqual(2200);
     }
   });
 
-  it("forces a single-event batch when one event is larger than budget", () => {
+  it('forces a single-event batch when one event is larger than budget', () => {
     const events = [mkEvent(1, 5000)];
     const batches = buildSizedBatches(events, {
-      collectorId: "collector-a",
-      maxBytes: 1200
+      collectorId: 'collector-a',
+      maxBytes: 1200,
     });
     expect(batches).toHaveLength(1);
     const parsed = JSON.parse(batches[0]) as { events: Array<{ eventId: string }> };
     expect(parsed.events).toHaveLength(1);
-    expect(parsed.events[0].eventId).toBe("evt_1");
+    expect(parsed.events[0].eventId).toBe('evt_1');
   });
 
-  it("includes an event when the batch size exactly matches maxBytes", () => {
-    const collectorId = "collector-a";
+  it('includes an event when the batch size exactly matches maxBytes', () => {
+    const collectorId = 'collector-a';
     const event1 = mkEvent(1, 10);
     const event2 = mkEvent(2, 10);
 
     // Calculate maxBytes such that event1 AND event2 TOGETHER exactly match maxBytes
     const twoEventsBatch = JSON.stringify({ collectorId, events: [event1, event2] });
-    const exactMaxBytes = Buffer.byteLength(twoEventsBatch, "utf8");
+    const exactMaxBytes = Buffer.byteLength(twoEventsBatch, 'utf8');
 
     const events = [event1, event2];
 
     const batches = buildSizedBatches(events, {
       collectorId,
-      maxBytes: exactMaxBytes
+      maxBytes: exactMaxBytes,
     });
 
     // Both events should be in a single batch
     expect(batches).toHaveLength(1);
-    expect(Buffer.byteLength(batches[0], "utf8")).toBe(exactMaxBytes);
+    expect(Buffer.byteLength(batches[0], 'utf8')).toBe(exactMaxBytes);
 
     const parsed = JSON.parse(batches[0]);
     expect(parsed.events).toHaveLength(2);
-    expect(parsed.events[0].eventId).toBe("evt_1");
-    expect(parsed.events[1].eventId).toBe("evt_2");
+    expect(parsed.events[0].eventId).toBe('evt_1');
+    expect(parsed.events[1].eventId).toBe('evt_2');
   });
 });

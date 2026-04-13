@@ -1,16 +1,16 @@
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 function parseEnvFile(filePath: string): void {
   if (!fs.existsSync(filePath)) {
     return;
   }
 
-  const contents = fs.readFileSync(filePath, "utf8");
+  const contents = fs.readFileSync(filePath, 'utf8');
   for (const rawLine of contents.split(/\r?\n/)) {
     const line = rawLine.trim();
-    if (!line || line.startsWith("#")) {
+    if (!line || line.startsWith('#')) {
       continue;
     }
 
@@ -34,6 +34,6 @@ function parseEnvFile(filePath: string): void {
   }
 }
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../");
-parseEnvFile(path.join(repoRoot, ".env"));
-parseEnvFile(path.join(repoRoot, ".env.local"));
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../');
+parseEnvFile(path.join(repoRoot, '.env'));
+parseEnvFile(path.join(repoRoot, '.env.local'));

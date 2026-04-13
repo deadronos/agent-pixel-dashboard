@@ -1,12 +1,15 @@
 # Agent Watch Dashboard — watcher-first idea
 
 ## One-line concept
+
 A split, watcher-first multi-agent visualization system:
+
 - **collectors** run on source hosts and watch local session/transcript folders
 - a central **hub** receives normalized events over HTTP/WebSocket
 - a **dashboard** renders those events as animated agent entities in real time
 
 This project is intended to support tools like:
+
 - Codex CLI
 - GitHub Copilot CLI
 - OpenClaw
@@ -21,13 +24,16 @@ The key design choice is:
 ---
 
 ## Why watcher-first
+
 Most non-ephemeral agent sessions leave persistent traces somewhere on disk:
+
 - session metadata
 - JSONL transcripts
 - event logs
 - checkpoints or resumable state
 
 That makes filesystem-backed collection attractive because it is:
+
 - less invasive than hooking every CLI directly
 - easier to retrofit onto existing agent workflows
 - robust for local-first tools
@@ -39,7 +45,9 @@ Hooks can still be added later to improve latency and precision, but the base sy
 ---
 
 ## Product goal
+
 Build a dashboard that can display active agent sessions as living entities:
+
 - one entity per tracked session or sub-agent
 - dynamic layout for 1–8 active entities
 - animated “face/state” visualization
@@ -75,9 +83,11 @@ The dashboard should feel ambient and alive, but still be useful as a debugging/
 ### Roles
 
 #### 1. Collector
+
 Runs locally on each machine that produces agent sessions.
 
 Responsibilities:
+
 - discover session roots for supported tools
 - watch files/folders for changes
 - tail JSONL / parse sidecar metadata
@@ -86,9 +96,11 @@ Responsibilities:
 - optionally expose small debug UI/logs locally
 
 #### 2. Hub
+
 Central receiver and state manager.
 
 Responsibilities:
+
 - authenticate collectors
 - accept normalized events
 - deduplicate/reorder when possible
@@ -97,9 +109,11 @@ Responsibilities:
 - expose live event stream and state snapshot to dashboards
 
 #### 3. Dashboard
+
 Purely visual consumer.
 
 Responsibilities:
+
 - subscribe to hub stream
 - render agent entities
 - animate state transitions
@@ -139,15 +153,18 @@ Important rule:
 ## Integration model
 
 ### Primary integration: watcher plugins
+
 Each supported source gets a watcher plugin.
 
 Examples:
+
 - `plugin-codex-watch`
 - `plugin-copilot-watch`
 - `plugin-openclaw-watch`
 - `plugin-gemini-watch`
 
 A watcher plugin may inspect:
+
 - transcript folders
 - session metadata files
 - JSONL append-only logs
@@ -155,9 +172,11 @@ A watcher plugin may inspect:
 - tool-specific sidecar indices or session maps
 
 ### Optional enrichers later
+
 Not required for MVP.
 
 Possible enrichers:
+
 - hook enrichers
 - process liveness enrichers
 - IDE bridge enrichers
@@ -168,15 +187,18 @@ These can improve latency or precision, but the project should still work if non
 ---
 
 ## Entity model
+
 A displayed “face” should represent an **entity**, not just a raw event.
 
 Entity kinds:
+
 - session
 - subagent
 - tool-run (optional later)
 - synthetic/system entity (optional later)
 
 Suggested identity fields:
+
 - `source`
 - `sourceHost`
 - `sessionId`
@@ -186,6 +208,7 @@ Suggested identity fields:
 - `displayName`
 
 ### Example entity IDs
+
 - `codex:session:abc123`
 - `copilot:session:xyz789`
 - `openclaw:subagent:researcher:run42`
@@ -224,6 +247,7 @@ If a source has no explicit parent-child information, the collector can emit a f
 ```
 
 ### Minimum event types
+
 - `session_discovered`
 - `session_started`
 - `message`
@@ -236,6 +260,7 @@ If a source has no explicit parent-child information, the collector can emit a f
 - `session_archived`
 
 ### Notes
+
 - `eventId` should be deterministic when possible to help deduplication.
 - `sequence` can be source-local if global ordering is unavailable.
 - `activityScore` is a normalized hint for UI prioritization.
@@ -269,7 +294,7 @@ export interface NormalizedEvent {
   entityId: string;
   sessionId?: string;
   parentEntityId?: string | null;
-  entityKind: "session" | "subagent" | "tool-run";
+  entityKind: 'session' | 'subagent' | 'tool-run';
   displayName: string;
   eventType: string;
   status?: string;
@@ -296,15 +321,19 @@ export interface EventEnricher {
 ## Collector behavior
 
 ### Discovery
+
 Collectors should not hardcode only one path if the source supports overrides.
 A plugin should support:
+
 - default home/path conventions
 - environment variable overrides
 - explicit configured roots
 - multiple roots if needed
 
 ### Watching
+
 Each watcher plugin should support:
+
 - file create
 - file append
 - file rotate/replace if applicable
@@ -312,7 +341,9 @@ Each watcher plugin should support:
 - rehydration on startup
 
 ### Parsing
+
 Parsers should:
+
 - tolerate malformed partial lines
 - track per-file offsets
 - resume after restart
@@ -320,11 +351,14 @@ Parsers should:
 - avoid sending duplicate already-read records
 
 ### Transmission
+
 Collectors send normalized events to the hub via:
+
 - HTTP batch POST for safety
 - optional WebSocket streaming later
 
 MVP recommendation:
+
 - start with HTTP batch POST
 - poll/send every 250–1000 ms or on append burst
 
@@ -333,6 +367,7 @@ MVP recommendation:
 ## Hub design
 
 ### Responsibilities
+
 - receive event batches from collectors
 - authenticate using simple shared secret or token
 - deduplicate by `eventId`
@@ -341,6 +376,7 @@ MVP recommendation:
 - store recent event history for replay/detail views
 
 ### Suggested endpoints
+
 - `POST /api/events/batch`
 - `GET /api/state`
 - `GET /api/events/recent`
@@ -348,6 +384,7 @@ MVP recommendation:
 - `GET /health`
 
 ### Entity state projection
+
 The hub should maintain a current state object per entity:
 
 ```ts
@@ -359,7 +396,7 @@ interface EntityState {
   entityKind: string;
   sessionId?: string;
   parentEntityId?: string | null;
-  currentStatus: "active" | "idle" | "sleepy" | "dormant" | "done" | "error";
+  currentStatus: 'active' | 'idle' | 'sleepy' | 'dormant' | 'done' | 'error';
   lastEventAt: string;
   lastSummary?: string;
   activityScore: number;
@@ -372,6 +409,7 @@ interface EntityState {
 ## Dashboard behavior
 
 ### Layout rules
+
 Avoid freeform resizing that causes jitter.
 Use bucketed layouts:
 
@@ -382,9 +420,11 @@ Use bucketed layouts:
 - 7–8 active entities: 4x2
 
 Optional later:
+
 - hero tile + supporting tiles based on `activityScore`
 
 ### State machine for decay
+
 Recommended inactivity thresholds:
 
 - `0–10s`: **active**
@@ -394,6 +434,7 @@ Recommended inactivity thresholds:
 - `>300s`: archive or hide unless pinned
 
 ### Visual mapping ideas
+
 - active/planning: orbiting dots, alert eyes
 - tool usage: tiny icon or badge
 - success: brief smile pulse
@@ -402,6 +443,7 @@ Recommended inactivity thresholds:
 - done: content smile, dim halo
 
 ### Modes
+
 1. **Ambient mode**
    - pretty, minimal text, good for side display
 2. **Debug mode**
@@ -412,22 +454,28 @@ Recommended inactivity thresholds:
 ## Storage strategy
 
 ### Collector local state
+
 Each collector should persist:
+
 - file offsets
 - discovered session roots
 - dedupe cache for last sent event IDs
 - last successful transmission checkpoint
 
 Suggested local format:
+
 - JSON state file for MVP
 - SQLite later if needed
 
 ### Hub state
+
 For MVP:
+
 - in-memory active entity projection
 - append-only recent event log on disk or SQLite
 
 Later:
+
 - durable event store
 - replay support
 - query/search over past sessions
@@ -435,7 +483,9 @@ Later:
 ---
 
 ## Security / trust model
+
 MVP can stay simple:
+
 - shared secret or bearer token between collectors and hub
 - allowlist of collector IDs
 - optional LAN/Tailscale-only deployment
@@ -446,7 +496,9 @@ But do not leave the ingest API completely open.
 ---
 
 ## Why this is better than hook-first
+
 A hook-first plan tends to overfit to the best-supported runtimes and breaks down when:
+
 - hook support is missing
 - hook payloads are incomplete
 - Windows support differs
@@ -454,6 +506,7 @@ A hook-first plan tends to overfit to the best-supported runtimes and breaks dow
 - users already have agent tools running and do not want wrapper scripts everywhere
 
 Watcher-first gives you:
+
 - a lower common denominator that still works
 - easier bring-up across tools
 - the option to add hooks only where they improve things materially
@@ -463,24 +516,32 @@ Watcher-first gives you:
 ## Risks and mitigations
 
 ### Risk: session formats change
+
 Mitigation:
+
 - isolate parsing per plugin
 - version parsers
 - use sample fixtures/tests for each source
 
 ### Risk: append timing is delayed, dashboard looks stale
+
 Mitigation:
+
 - add process or hook enrichers later
 - infer lightweight heartbeats from file updates or running process
 
 ### Risk: truncated/compacted transcripts
+
 Mitigation:
+
 - parse incrementally
 - emit only new normalized events
 - keep entity state projection resilient to missing older history
 
 ### Risk: path assumptions break on Windows / custom homes / containers
+
 Mitigation:
+
 - support explicit configured roots
 - support env-based overrides
 - avoid hardcoding only one `~/.tool` path in business logic
@@ -513,6 +574,7 @@ Mitigation:
 ```
 
 ### Tech suggestion
+
 - TypeScript monorepo
 - Node.js for collector and hub
 - React for dashboard
@@ -527,6 +589,7 @@ If needed later, the dashboard can be wrapped in Tauri or Electron.
 ## MVP scope
 
 ### In scope
+
 - collector app with plugin loader
 - one or two watcher plugins
 - central hub with batch ingest API
@@ -535,6 +598,7 @@ If needed later, the dashboard can be wrapped in Tauri or Electron.
 - recent event sidebar or detail pane
 
 ### Out of scope for MVP
+
 - full historical search
 - fancy permissions system
 - direct IDE deep integration
@@ -547,90 +611,116 @@ If needed later, the dashboard can be wrapped in Tauri or Electron.
 ## Suggested phases / milestones
 
 ## Phase 0 — architecture and fixtures
+
 Goal:
+
 - lock the normalized event schema
 - gather sample transcript/session fixtures from target tools
 - define plugin SDK
 
 Deliverables:
+
 - `packages/event-schema`
 - `packages/plugin-sdk`
 - `docs/spec.md`
 - fixture samples for at least 2 sources
 
 Success criteria:
+
 - one source sample can be parsed into normalized events in tests
 
 ## Phase 1 — collector skeleton
+
 Goal:
+
 - load plugins
 - discover roots
 - watch files
 - emit batches to stdout or mock sink
 
 Deliverables:
+
 - `apps/collector`
 - offset persistence
 - plugin runner
 
 Success criteria:
+
 - collector can restart without re-emitting everything
 
 ## Phase 2 — first real plugins
+
 Goal:
+
 - implement at least 2 watcher plugins
 - parse real session data into common events
 
 Candidate order:
+
 1. OpenClaw
 2. Copilot CLI
 3. Codex CLI
 4. Gemini CLI
 
 Success criteria:
+
 - two tools produce stable entities in a shared stream
 
 ## Phase 3 — hub
+
 Goal:
+
 - ingest, dedupe, project state, broadcast live state
 
 Deliverables:
+
 - HTTP batch ingest
 - entity projection
 - WebSocket/SSE stream
 - recent event cache
 
 Success criteria:
+
 - multiple collectors can send to one hub
 
 ## Phase 4 — dashboard MVP
+
 Goal:
+
 - show live entities with activity states and layout logic
 
 Deliverables:
+
 - entity tiles
 - sleep/idle/dormant transitions
 - ambient mode
 - debug mode
 
 Success criteria:
+
 - 1–8 concurrent entities display cleanly
 
 ## Phase 5 — hardening
+
 Goal:
+
 - improve reliability and operator experience
 
 Ideas:
+
 - better reconnect logic
 - replay recent events on dashboard connect
 - config files + env overrides
 - more fixtures and parser tests
 
 ## Phase 6 — optional enrichers
+
 Goal:
+
 - add hooks or process enrichers only where they clearly help
 
 Examples:
+
 - faster tool-start/tool-end visibility
 - better parent-child linkage
 - better “currently active” inference
@@ -645,20 +735,24 @@ Examples:
 # Spec
 
 ## Problem
+
 Users run multiple local AI agent runtimes, but there is no shared, low-friction way to visualize active sessions across tools.
 
 ## Goals
+
 - Watch local session/transcript stores
 - Normalize into one event schema
 - Send to central hub
 - Render living multi-agent dashboard
 
 ## Non-goals
+
 - Full transcript search in MVP
 - Deep native IDE integration in MVP
 - Reliance on hooks for base functionality
 
 ## Functional requirements
+
 1. Collector discovers supported session roots.
 2. Collector tails new transcript/session data.
 3. Collector emits normalized events.
@@ -666,6 +760,7 @@ Users run multiple local AI agent runtimes, but there is no shared, low-friction
 5. Dashboard displays active entities with decay behavior.
 
 ## Quality requirements
+
 - restart-safe
 - tolerant of malformed partial lines
 - low enough latency for ambient live display
@@ -678,29 +773,34 @@ Users run multiple local AI agent runtimes, but there is no shared, low-friction
 # Tasks
 
 ## Event schema
+
 - [ ] Define TypeScript schema package
 - [ ] Add runtime validation
 - [ ] Add test fixtures
 
 ## Collector
+
 - [ ] Plugin loader
 - [ ] File watcher abstraction
 - [ ] Offset persistence
 - [ ] Batch sender
 
 ## Plugins
+
 - [ ] OpenClaw watcher plugin
 - [ ] Copilot watcher plugin
 - [ ] Codex watcher plugin
 - [ ] Gemini watcher plugin
 
 ## Hub
+
 - [ ] POST /api/events/batch
 - [ ] Entity state projection
 - [ ] WebSocket stream
 - [ ] Recent event store
 
 ## Dashboard
+
 - [ ] Tile layout engine
 - [ ] Face/state animations
 - [ ] Ambient mode
@@ -714,6 +814,7 @@ Users run multiple local AI agent runtimes, but there is no shared, low-friction
 
 Store redacted sample transcript/session files for each supported source.
 Each fixture should include:
+
 - original file type/path description
 - parser assumptions
 - expected normalized event output
@@ -766,12 +867,14 @@ STATE_DIR=./data/hub
 ---
 
 ## Implementation notes for Codex/Copilot/etc.
+
 Do not hardcode assumptions in the dashboard.
 Do not hardcode only one home path in parsers.
 Do not assume every source flushes immediately.
 Do not assume every source provides the same level of structured metadata.
 
 Prefer:
+
 - fixture-driven parser development
 - incremental append parsing
 - deterministic event IDs
@@ -785,6 +888,7 @@ Prefer:
 You are implementing a watcher-first multi-agent dashboard system in a TypeScript monorepo.
 
 Architecture:
+
 - apps/collector: local source-host collector that watches session/transcript folders
 - apps/hub: central API receiver and state projection service
 - apps/dashboard: React dashboard that visualizes entities from hub events
@@ -796,6 +900,7 @@ Architecture:
 - plugins/plugin-gemini-watch
 
 Important constraints:
+
 - watcher-first architecture
 - hooks are optional enrichers later, not the core integration model
 - all source-specific parsing belongs in collector plugins
@@ -806,6 +911,7 @@ Important constraints:
 - support configurable roots and environment overrides
 
 Implementation priorities:
+
 1. scaffold monorepo
 2. implement shared event schema package with runtime validation
 3. implement plugin SDK
@@ -815,6 +921,7 @@ Implementation priorities:
 7. implement one real watcher plugin first using fixture-driven tests
 
 Coding guidance:
+
 - TypeScript throughout
 - keep code modular and testable
 - avoid giant source-specific conditionals in shared code
@@ -823,6 +930,7 @@ Coding guidance:
 - prefer simple reliable MVP over overengineering
 
 Deliverables:
+
 - runnable monorepo
 - sample plugin
 - tests for schema and parser fixture
@@ -832,6 +940,7 @@ Deliverables:
 ---
 
 ## Recommended first implementation order
+
 1. event schema package
 2. fixture samples
 3. plugin SDK
@@ -845,6 +954,7 @@ Deliverables:
 ---
 
 ## Final takeaway
+
 This project should treat local session/transcript storage as the common denominator.
 That makes the system practical across multiple runtimes without depending on fragile or incomplete hook ecosystems.
 

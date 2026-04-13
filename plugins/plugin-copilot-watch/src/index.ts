@@ -1,30 +1,38 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
-import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
-import { isActiveSessionFile, matchesSessionFile, type SessionSource } from "@agent-watch/plugin-sdk";
+import {
+  makeDeterministicEventId,
+  parseNormalizedEvent,
+  type NormalizedEvent,
+} from '@agent-watch/event-schema';
+import {
+  isActiveSessionFile,
+  matchesSessionFile,
+  type SessionSource,
+} from '@agent-watch/plugin-sdk';
 import type {
   CollectorPlugin,
   DiscoveredSessionRoot,
   PluginContext,
   WatchContext,
-  WatchHandle
-} from "@agent-watch/plugin-sdk";
-import { watch } from "chokidar";
+  WatchHandle,
+} from '@agent-watch/plugin-sdk';
+import { watch } from 'chokidar';
 
-const DEFAULT_PATHS = ["~/.copilot/session-state", "~/.copilot"];
-const SOURCE: SessionSource = "copilot";
+const DEFAULT_PATHS = ['~/.copilot/session-state', '~/.copilot'];
+const SOURCE: SessionSource = 'copilot';
 
 function expandHome(input: string): string {
-  if (!input.startsWith("~")) {
+  if (!input.startsWith('~')) {
     return input;
   }
   return path.join(os.homedir(), input.slice(1));
 }
 
-function getString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
+function getString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
 }
 
 function parseRecord(
@@ -35,7 +43,9 @@ function parseRecord(
   fallbackTimestamp: string
 ): NormalizedEvent {
   const data =
-    record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : undefined;
+    record.data && typeof record.data === 'object'
+      ? (record.data as Record<string, unknown>)
+      : undefined;
   const sessionId =
     getString(record.session_id) ||
     getString(record.sessionId) ||
@@ -50,10 +60,7 @@ function parseRecord(
     getString(record.createdAt) ||
     fallbackTimestamp;
 
-  const eventType =
-    getString(record.event_type) ||
-    getString(record.type) ||
-    "message";
+  const eventType = getString(record.event_type) || getString(record.type) || 'message';
 
   const summary =
     getString(data?.content) ||
@@ -68,29 +75,29 @@ function parseRecord(
     getString(record.content) ||
     getString(record.raw);
 
-  const rawActivity = typeof record.activityScore === "number" ? record.activityScore : undefined;
-  const activityScore = rawActivity ?? (eventType.startsWith("tool") ? 0.85 : 0.6);
+  const rawActivity = typeof record.activityScore === 'number' ? record.activityScore : undefined;
+  const activityScore = rawActivity ?? (eventType.startsWith('tool') ? 0.85 : 0.6);
 
   const event = {
     eventId: makeDeterministicEventId({
-      source: "copilot",
+      source: 'copilot',
       entityId,
       timestamp,
       eventType,
       sequence,
-      detail: detail || summary
+      detail: detail || summary,
     }),
     timestamp,
-    source: "copilot",
+    source: 'copilot',
     sourceHost,
     entityId,
     sessionId,
     parentEntityId: null,
-    entityKind: "session" as const,
-    displayName: "Copilot",
+    entityKind: 'session' as const,
+    displayName: 'Copilot',
     eventType,
-    status: getString(record.status, "active"),
-    summary: summary || "Copilot activity",
+    status: getString(record.status, 'active'),
+    summary: summary || 'Copilot activity',
     detail: detail || undefined,
     activityScore: Math.max(0, Math.min(1, activityScore)),
     sequence,
@@ -98,24 +105,25 @@ function parseRecord(
       filePath,
       toolName: getString(record.toolName) || getString(record.tool_name),
       rawType: getString(record.type),
-      model: getString(data?.selectedModel) || undefined
-    }
+      model: getString(data?.selectedModel) || undefined,
+    },
   };
 
   return parseNormalizedEvent(event);
 }
 
 export class CopilotWatchPlugin implements CollectorPlugin {
-  id = "plugin-copilot-watch";
-  source = "copilot";
+  id = 'plugin-copilot-watch';
+  source = 'copilot';
 
   async discover(config: PluginContext): Promise<DiscoveredSessionRoot[]> {
-    const envRoots = (config.env.COPILOT_SESSION_ROOTS ?? "")
-      .split(",")
+    const envRoots = (config.env.COPILOT_SESSION_ROOTS ?? '')
+      .split(',')
       .map((value: string) => value.trim())
       .filter(Boolean);
 
-    const configured = config.configuredRoots.length > 0 ? config.configuredRoots : [...envRoots, ...DEFAULT_PATHS];
+    const configured =
+      config.configuredRoots.length > 0 ? config.configuredRoots : [...envRoots, ...DEFAULT_PATHS];
     const roots = configured.map(expandHome);
     const discovered: DiscoveredSessionRoot[] = [];
 
@@ -141,14 +149,14 @@ export class CopilotWatchPlugin implements CollectorPlugin {
     const offsets = new Map<string, number>();
     const sequences = new Map<string, number>();
 
-    const ingestFile = async (filePath: string, reason: "add" | "change"): Promise<void> => {
+    const ingestFile = async (filePath: string, reason: 'add' | 'change'): Promise<void> => {
       if (!matchesSessionFile(SOURCE, filePath)) {
         return;
       }
 
       try {
         const stat = await fs.stat(filePath);
-        if (!offsets.has(filePath) && reason === "add") {
+        if (!offsets.has(filePath) && reason === 'add') {
           if (!isActiveSessionFile(stat.mtimeMs, Date.now(), activeWindowMs)) {
             offsets.set(filePath, stat.size);
             return;
@@ -157,7 +165,7 @@ export class CopilotWatchPlugin implements CollectorPlugin {
         const previousOffset = offsets.get(filePath) ?? 0;
         const nextOffset = stat.size < previousOffset ? 0 : previousOffset;
 
-        const handle = await fs.open(filePath, "r");
+        const handle = await fs.open(filePath, 'r');
         try {
           const length = stat.size - nextOffset;
           if (length <= 0) {
@@ -167,8 +175,8 @@ export class CopilotWatchPlugin implements CollectorPlugin {
 
           const buffer = Buffer.alloc(length);
           await handle.read(buffer, 0, length, nextOffset);
-          const text = buffer.toString("utf8");
-          const lines = text.split("\n").filter((line) => line.trim().length > 0);
+          const text = buffer.toString('utf8');
+          const lines = text.split('\n').filter(line => line.trim().length > 0);
 
           for (const line of lines) {
             let parsed: Record<string, unknown>;
@@ -182,7 +190,13 @@ export class CopilotWatchPlugin implements CollectorPlugin {
             sequences.set(filePath, sequence);
 
             try {
-              const event = parseRecord(root.host, filePath, parsed, sequence, stat.mtime.toISOString());
+              const event = parseRecord(
+                root.host,
+                filePath,
+                parsed,
+                sequence,
+                stat.mtime.toISOString()
+              );
               ctx.onEvent(event);
             } catch (error) {
               ctx.onError(error as Error);
@@ -204,26 +218,26 @@ export class CopilotWatchPlugin implements CollectorPlugin {
       depth: 6,
       awaitWriteFinish: {
         stabilityThreshold: 120,
-        pollInterval: 40
-      }
+        pollInterval: 40,
+      },
     });
 
-    watcher.on("add", (filePath) => {
-      void ingestFile(filePath, "add");
+    watcher.on('add', filePath => {
+      void ingestFile(filePath, 'add');
     });
 
-    watcher.on("change", (filePath) => {
-      void ingestFile(filePath, "change");
+    watcher.on('change', filePath => {
+      void ingestFile(filePath, 'change');
     });
 
-    watcher.on("error", (error) => {
+    watcher.on('error', error => {
       ctx.onError(error as Error);
     });
 
     return {
       close: async () => {
         await watcher.close();
-      }
+      },
     };
   }
 }

@@ -1,17 +1,17 @@
-import "./env.js";
-import { setInterval } from "node:timers";
+import './env.js';
+import { setInterval } from 'node:timers';
 
-import { parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
-import type { WatchHandle } from "@agent-watch/plugin-sdk";
+import { parseNormalizedEvent, type NormalizedEvent } from '@agent-watch/event-schema';
+import type { WatchHandle } from '@agent-watch/plugin-sdk';
 
-import { buildSizedBatches } from "./batching.js";
-import { loadConfig } from "./config.js";
+import { buildSizedBatches } from './batching.js';
+import { loadConfig } from './config.js';
 import {
   discoverPluginSources,
   loadPluginsFromSources,
   resolvePluginDir,
-  resolveRequestedSources
-} from "./plugin-loader.js";
+  resolveRequestedSources,
+} from './plugin-loader.js';
 
 const config = loadConfig(process.env);
 
@@ -26,18 +26,18 @@ async function flushQueue(): Promise<void> {
   const payload = queue.splice(0, queue.length);
   const bodies = buildSizedBatches(payload, {
     collectorId: config.collectorId,
-    maxBytes: config.maxBatchBytes
+    maxBytes: config.maxBatchBytes,
   });
 
   try {
     for (const body of bodies) {
       const response = await fetch(`${config.hubUrl}/api/events/batch`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${config.hubToken}`
+          'content-type': 'application/json',
+          authorization: `Bearer ${config.hubToken}`,
         },
-        body
+        body,
       });
 
       if (!response.ok) {
@@ -64,12 +64,14 @@ async function main(): Promise<void> {
     const roots = await plugin.discover({
       host: config.hostName,
       configuredRoots: config.codexRoots,
-      env: process.env
+      env: process.env,
     });
 
     if (roots.length === 0) {
       // eslint-disable-next-line no-console
-      console.log(`[${plugin.source}] no roots discovered (set ${plugin.source.toUpperCase()}_SESSION_ROOTS to override)`);
+      console.log(
+        `[${plugin.source}] no roots discovered (set ${plugin.source.toUpperCase()}_SESSION_ROOTS to override)`
+      );
       continue;
     }
 
@@ -86,9 +88,8 @@ async function main(): Promise<void> {
           }
         },
         onError: (error: Error) => {
-           
           console.error(`[${plugin.source}] watch error [${root.path}]`, error.message);
-        }
+        },
       });
       handles.push(handle);
       // eslint-disable-next-line no-console
@@ -100,35 +101,35 @@ async function main(): Promise<void> {
   }
 
   const timer = setInterval(() => {
-    void flushQueue().catch((error) => {
-       
-      console.error("flush failed", error.message);
+    void flushQueue().catch(error => {
+      console.error('flush failed', error.message);
     });
   }, config.flushIntervalMs);
 
   const shutdown = async (): Promise<void> => {
     clearInterval(timer);
-    await Promise.all(handles.map((handle) => handle.close()));
+    await Promise.all(handles.map(handle => handle.close()));
     try {
       await flushQueue();
       process.exit(0);
     } catch (error) {
-       
-      console.error("flush failed during shutdown:", error instanceof Error ? error.message : String(error));
+      console.error(
+        'flush failed during shutdown:',
+        error instanceof Error ? error.message : String(error)
+      );
       process.exit(1);
     }
   };
 
-  process.on("SIGINT", () => {
+  process.on('SIGINT', () => {
     void shutdown();
   });
-  process.on("SIGTERM", () => {
+  process.on('SIGTERM', () => {
     void shutdown();
   });
 }
 
-void main().catch((error) => {
-   
+void main().catch(error => {
   console.error(error);
   process.exit(1);
 });

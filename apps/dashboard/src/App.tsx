@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 
-import { AgentFaceCard } from "./AgentFaceCard.js";
-import { ConversationDrawer } from "./ConversationDrawer.js";
-import { SettingsPanel } from "./SettingsPanel.js";
+import { AgentFaceCard } from './AgentFaceCard.js';
+import { ConversationDrawer } from './ConversationDrawer.js';
+import { SettingsPanel } from './SettingsPanel.js';
 import {
   buildConversationDetailUrl,
-  type ConversationDetailPayload
-} from "./conversation-detail.js";
-import { toggleSelectedGroupId } from "./conversation-selection.js";
-import { dashboardConfig } from "./dashboard-config.js";
-import { createResolvedSettings, type ViewerPreferences } from "./dashboard-settings.js";
+  type ConversationDetailPayload,
+} from './conversation-detail.js';
+import { toggleSelectedGroupId } from './conversation-selection.js';
+import { dashboardConfig } from './dashboard-config.js';
+import { createResolvedSettings, type ViewerPreferences } from './dashboard-settings.js';
 import {
   getEmptyStateMessage,
   getFilterOptions,
@@ -17,42 +17,42 @@ import {
   getEntityStatusSummary,
   findVisibleEntityGroupById,
   getVisibleEntityGroups,
-  pruneViewerPreferencesToLiveOptions
-} from "./dashboard-view.js";
-import { resolveLiveStatus, type DashboardEntity } from "./face.js";
-import { resolveHubWebSocketUrl } from "./hub-url.js";
-import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
+  pruneViewerPreferencesToLiveOptions,
+} from './dashboard-view.js';
+import { resolveLiveStatus, type DashboardEntity } from './face.js';
+import { resolveHubWebSocketUrl } from './hub-url.js';
+import { loadViewerPreferences, saveViewerPreferences } from './viewer-preferences.js';
 
-const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
+const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? 'http://localhost:3030';
 const HUB_WS = resolveHubWebSocketUrl(import.meta.env.VITE_HUB_WS, HUB_HTTP);
 
 function normalizeEntity(entity: DashboardEntity): DashboardEntity {
   return {
     ...entity,
-    currentStatus: resolveLiveStatus(entity.currentStatus, entity.lastEventAt)
+    currentStatus: resolveLiveStatus(entity.currentStatus, entity.lastEventAt),
   };
 }
 
 function formatTopbarTimestamp(timestamp: string | undefined): string {
   if (!timestamp) {
-    return "Waiting for activity";
+    return 'Waiting for activity';
   }
 
   const value = new Date(timestamp);
   if (Number.isNaN(value.getTime())) {
-    return "Waiting for activity";
+    return 'Waiting for activity';
   }
 
   return value.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit"
+    hour: 'numeric',
+    minute: '2-digit',
   });
 }
 
 export function App() {
   const [entities, setEntities] = useState<DashboardEntity[]>([]);
-  const [connectionState, setConnectionState] = useState<"connecting" | "live" | "offline">(
-    "connecting"
+  const [connectionState, setConnectionState] = useState<'connecting' | 'live' | 'offline'>(
+    'connecting'
   );
   const [viewerPreferences, setViewerPreferences] = useState<ViewerPreferences>(() =>
     loadViewerPreferences()
@@ -78,8 +78,8 @@ export function App() {
 
   useEffect(() => {
     fetch(`${HUB_HTTP}/api/state`)
-      .then((res) => res.json())
-      .then((data) => {
+      .then(res => res.json())
+      .then(data => {
         setEntities(((data.entities ?? []) as DashboardEntity[]).map(normalizeEntity));
       })
       .catch(() => {
@@ -89,10 +89,10 @@ export function App() {
 
   useEffect(() => {
     const socket = new WebSocket(HUB_WS);
-    socket.addEventListener("open", () => setConnectionState("live"));
-    socket.addEventListener("close", () => setConnectionState("offline"));
-    socket.addEventListener("error", () => setConnectionState("offline"));
-    socket.addEventListener("message", (event) => {
+    socket.addEventListener('open', () => setConnectionState('live'));
+    socket.addEventListener('close', () => setConnectionState('offline'));
+    socket.addEventListener('error', () => setConnectionState('offline'));
+    socket.addEventListener('message', event => {
       try {
         const payload = JSON.parse(event.data as string) as {
           type: string;
@@ -109,12 +109,12 @@ export function App() {
             activityScore?: number;
           }>;
         };
-        if (payload.type !== "events" || !payload.events) {
+        if (payload.type !== 'events' || !payload.events) {
           return;
         }
         const events = payload.events;
-        setEntities((previous) => {
-          const next = new Map(previous.map((entity) => [entity.entityId, entity]));
+        setEntities(previous => {
+          const next = new Map(previous.map(entity => [entity.entityId, entity]));
           for (const eventItem of events) {
             const prev = next.get(eventItem.entityId);
             next.set(eventItem.entityId, {
@@ -129,7 +129,7 @@ export function App() {
               lastEventAt: eventItem.timestamp,
               lastSummary: eventItem.summary ?? prev?.lastSummary,
               activityScore: eventItem.activityScore ?? prev?.activityScore ?? 0.5,
-              recentEvents: prev?.recentEvents ?? []
+              recentEvents: prev?.recentEvents ?? [],
             });
           }
           return [...next.values()];
@@ -146,7 +146,7 @@ export function App() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setEntities((previous) => previous.map(normalizeEntity));
+      setEntities(previous => previous.map(normalizeEntity));
     }, 5_000);
 
     return () => {
@@ -154,7 +154,10 @@ export function App() {
     };
   }, []);
 
-  const visibleGroups = useMemo(() => getVisibleEntityGroups(entities, settings), [entities, settings]);
+  const visibleGroups = useMemo(
+    () => getVisibleEntityGroups(entities, settings),
+    [entities, settings]
+  );
   const selectedVisibleGroup = useMemo(
     () => findVisibleEntityGroupById(visibleGroups, selectedGroupId),
     [selectedGroupId, visibleGroups]
@@ -169,14 +172,14 @@ export function App() {
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         setSelectedGroupId(null);
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [selectedGroupId]);
 
@@ -205,28 +208,30 @@ export function App() {
       buildConversationDetailUrl(HUB_HTTP, {
         source: selectedVisibleGroup.source,
         sessionId: selectedVisibleGroup.sessionId,
-        entityId: selectedVisibleGroup.representative.entityId
+        entityId: selectedVisibleGroup.representative.entityId,
       }),
       { signal: controller.signal }
     )
-      .then(async (response) => {
+      .then(async response => {
         if (!response.ok) {
           throw new Error(`detail request failed (${response.status})`);
         }
         return (await response.json()) as ConversationDetailPayload;
       })
-      .then((detail) => {
+      .then(detail => {
         if (controller.signal.aborted) {
           return;
         }
         setSelectedDetail(detail);
       })
-      .catch((error) => {
+      .catch(error => {
         if (controller.signal.aborted) {
           return;
         }
         setSelectedDetail(null);
-        setDetailError(error instanceof Error ? error.message : "Failed to load conversation detail");
+        setDetailError(
+          error instanceof Error ? error.message : 'Failed to load conversation detail'
+        );
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -244,10 +249,10 @@ export function App() {
       className="dashboard"
       style={
         {
-          "--page-bg": settings.theme.pageBackground,
-          "--panel-bg": settings.theme.panelBackground,
-          "--text-color": settings.theme.textColor,
-          "--muted-text-color": settings.theme.mutedTextColor
+          '--page-bg': settings.theme.pageBackground,
+          '--panel-bg': settings.theme.panelBackground,
+          '--text-color': settings.theme.textColor,
+          '--muted-text-color': settings.theme.mutedTextColor,
         } as CSSProperties
       }
     >
@@ -259,7 +264,7 @@ export function App() {
             <p className="topbar__lede">
               {statusSummary.total > 0
                 ? `Tracking ${statusSummary.total} conversations. Latest activity at ${formatTopbarTimestamp(statusSummary.latestEventAt)}.`
-                : "Waiting for the first collector event."}
+                : 'Waiting for the first collector event.'}
             </p>
           </div>
           <div className="topbar__meta">
@@ -281,12 +286,15 @@ export function App() {
                 <span>Dormant</span>
               </span>
             </div>
-            <div className={`badge ${connectionState === "live" ? "ok" : "warn"}`} aria-live="polite">
-              {connectionState === "live"
-                ? "Live"
-                : connectionState === "connecting"
-                  ? "Connecting"
-                  : "Disconnected"}
+            <div
+              className={`badge ${connectionState === 'live' ? 'ok' : 'warn'}`}
+              aria-live="polite"
+            >
+              {connectionState === 'live'
+                ? 'Live'
+                : connectionState === 'connecting'
+                  ? 'Connecting'
+                  : 'Disconnected'}
             </div>
           </div>
         </header>
@@ -298,13 +306,16 @@ export function App() {
             sourceOptions={filterOptions.sources}
             entityKindOptions={filterOptions.entityKinds}
             viewerPreferences={activeViewerPreferences}
-            onChange={(patch) => setViewerPreferences((previous) => ({ ...previous, ...patch }))}
+            onChange={patch => setViewerPreferences(previous => ({ ...previous, ...patch }))}
             onReset={() => setViewerPreferences({})}
           />
         ) : null}
 
-        <section className="grid" style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}>
-          {visibleGroups.map((group) => (
+        <section
+          className="grid"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(16rem, 1fr))` }}
+        >
+          {visibleGroups.map(group => (
             <AgentFaceCard
               key={group.groupId}
               entity={group.representative}
@@ -314,12 +325,14 @@ export function App() {
               artStyleMode={settings.artStyleMode}
               selected={selectedVisibleGroupId === group.groupId}
               onClick={() => {
-                setSelectedGroupId((current) => toggleSelectedGroupId(current, group.groupId));
+                setSelectedGroupId(current => toggleSelectedGroupId(current, group.groupId));
               }}
             />
           ))}
           {visibleGroups.length === 0 ? (
-            <p className={`empty ${entities.length > 0 ? "empty--filtered" : ""}`}>{emptyMessage}</p>
+            <p className={`empty ${entities.length > 0 ? 'empty--filtered' : ''}`}>
+              {emptyMessage}
+            </p>
           ) : null}
         </section>
       </div>
