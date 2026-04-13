@@ -13,11 +13,16 @@ export interface CollectorConfig {
 }
 
 export function loadConfig(env: Record<string, string | undefined>): CollectorConfig {
+  const hubToken = env.HUB_AUTH_TOKEN;
+  if (!hubToken) {
+    throw new Error("HUB_AUTH_TOKEN environment variable is required");
+  }
+
   return {
     collectorId: env.COLLECTOR_ID ?? `collector-${os.hostname()}`,
     hostName: env.COLLECTOR_HOST ?? os.hostname(),
     hubUrl: env.HUB_URL ?? "http://localhost:3030",
-    hubToken: env.HUB_AUTH_TOKEN ?? "dev-secret",
+    hubToken,
     flushIntervalMs: Number(env.FLUSH_INTERVAL_MS ?? 500),
     maxBatchBytes: Number(env.MAX_BATCH_BYTES ?? 1_500_000),
     watchSources: (env.WATCH_SOURCES ?? "auto")
