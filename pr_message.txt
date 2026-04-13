@@ -1,5 +1,0 @@
-🧪 [plugin-sdk] Add edge-case testing for matchesSessionFile
-
-🎯 What: Added tests to ensure the matchesSessionFile logic correctly rejects invalid paths, incorrect file extensions, and correctly handles Windows-style file paths.
-📊 Coverage: Added assertions for missing prefixes (rollout-, session-), incorrect extensions (.json vs .jsonl), missing expected intermediate directories, Windows-style paths with backslashes, and unknown source types.
-✨ Result: The test suite now confidently validates the positive and negative logic branches inside the path detection switch statement for all supported AI agents (codex, claude, gemini, openclaw, copilot).
