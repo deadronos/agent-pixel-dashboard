@@ -1,28 +1,23 @@
-import type { NormalizedEvent } from '@agent-watch/event-schema';
-
-interface BatchBody {
-  collectorId: string;
-  events: NormalizedEvent[];
-}
+import type { IngestBatchBody, NormalizedEvent } from "@agent-watch/event-schema";
 
 export interface BuildBatchOptions {
   collectorId: string;
   maxBytes: number;
 }
 
-function serialize(body: BatchBody): string {
+function serialize(body: IngestBatchBody): string {
   return JSON.stringify(body);
 }
 
 function byteSize(value: string): number {
-  return Buffer.byteLength(value, 'utf8');
+  return Buffer.byteLength(value, "utf8");
 }
 
 function shrinkEvent(event: NormalizedEvent): NormalizedEvent {
   return {
     ...event,
     detail: event.detail ? `${event.detail.slice(0, 2000)}…` : event.detail,
-    meta: undefined,
+    meta: undefined
   };
 }
 
@@ -41,11 +36,11 @@ function encodeSingleEvent(event: NormalizedEvent, collectorId: string, maxBytes
     events: [
       {
         ...event,
-        summary: event.summary ? event.summary.slice(0, 180) : 'oversized event trimmed',
+        summary: event.summary ? event.summary.slice(0, 180) : "oversized event trimmed",
         detail: undefined,
-        meta: undefined,
-      },
-    ],
+        meta: undefined
+      }
+    ]
   });
   return body;
 }

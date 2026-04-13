@@ -1,46 +1,35 @@
-import os from 'node:os';
-import path from 'node:path';
+import { describe, expect, it } from "vitest";
 
-import { describe, expect, it } from 'vitest';
+import { parseCopilotRecord } from "./index.js";
 
-function expandHome(input: string): string {
-  if (!input.startsWith('~')) {
-    return input;
-  }
-  return path.join(os.homedir(), input.slice(1));
-}
+describe("parseCopilotRecord", () => {
+  it("normalizes copilot session records into shared events", () => {
+    const event = parseCopilotRecord(
+      "workstation",
+      "/Users/test/.copilot/session-state/abc123/events.jsonl",
+      {
+        event_type: "tool_invocation",
+        status: "active",
+        data: {
+          sessionId: "abc123",
+          content: "Running a tool",
+          selectedModel: "gpt-5.4"
+        },
+        tool_name: "search"
+      },
+      3,
+      "2026-04-09T20:15:31.000Z"
+    );
 
-function getString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-describe('copilot watch helpers', () => {
-  describe('expandHome', () => {
-    it('returns input unchanged when not starting with ~', () => {
-      const input = '/some/path';
-      expect(expandHome(input)).toBe(input);
+    expect(event).toMatchObject({
+      source: "copilot",
+      entityId: "copilot:session:abc123",
+      eventType: "tool_invocation",
+      summary: "Running a tool"
     });
-
-    it('expands ~ to home directory', () => {
-      const input = '~/some/path';
-      expect(expandHome(input)).toBe(path.join(os.homedir(), 'some/path'));
-    });
-  });
-
-  describe('getString', () => {
-    it('returns string value as-is', () => {
-      expect(getString('hello')).toBe('hello');
-    });
-
-    it('returns fallback for non-string values', () => {
-      expect(getString(123, 'fallback')).toBe('fallback');
-      expect(getString(null, 'fallback')).toBe('fallback');
-      expect(getString(undefined, 'fallback')).toBe('fallback');
-      expect(getString({}, 'fallback')).toBe('fallback');
-    });
-
-    it('uses empty string as default fallback', () => {
-      expect(getString(123)).toBe('');
+    expect(event.meta).toMatchObject({
+      toolName: "search",
+      model: "gpt-5.4"
     });
   });
 });
