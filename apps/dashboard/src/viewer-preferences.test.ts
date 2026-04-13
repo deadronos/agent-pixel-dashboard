@@ -1,6 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SettingsPanel } from "./SettingsPanel.js";
 import { dashboardConfig } from "./dashboard-config.js";
@@ -94,6 +94,20 @@ describe("viewer preferences", () => {
       visibleEntityKinds: ["worker", "session"],
       artStyleMode: "playful"
     });
+  });
+
+  it("handles unavailable localStorage gracefully", () => {
+    const spy = vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => {
+      throw new Error("Access denied");
+    });
+
+    try {
+      expect(loadViewerPreferences()).toEqual({});
+      expect(() => saveViewerPreferences({ maxAgentsShown: 5 })).not.toThrow();
+      expect(() => resetViewerPreferences()).not.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
