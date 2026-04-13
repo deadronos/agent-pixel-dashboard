@@ -22,7 +22,7 @@ const SOURCE: SessionSource = "claude";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
 export function getClaudeProjectKey(filePath: string): string | undefined {
-  const normalized = filePath.replace(/\/g, "/");
+  const normalized = filePath.replace(/\\/g, "/");
   const marker = "/.claude/projects/";
   const markerIndex = normalized.indexOf(marker);
   if (markerIndex < 0) {

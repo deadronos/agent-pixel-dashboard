@@ -2,7 +2,7 @@ import os from 'node:os';
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { loadConfig } from './config';
+import { loadConfig } from './config.js';
 
 vi.mock('node:os', () => ({
   default: {
@@ -27,7 +27,7 @@ describe('loadConfig', () => {
       maxBatchBytes: 1500000,
       watchSources: ['auto'],
       pluginsDir: '',
-      codexRoots: [],
+      sessionRoots: [],
     });
   });
 
@@ -55,7 +55,7 @@ describe('loadConfig', () => {
       maxBatchBytes: 2000000,
       watchSources: ['docker', 'kubernetes'],
       pluginsDir: '/opt/plugins',
-      codexRoots: ['/var/log/codex1', '/var/log/codex2'],
+      sessionRoots: ['/var/log/codex1', '/var/log/codex2'],
     });
   });
 
@@ -68,7 +68,7 @@ describe('loadConfig', () => {
     const config = loadConfig(env);
 
     expect(config.watchSources).toEqual(['auto', 'docker']);
-    expect(config.codexRoots).toEqual(['/root1', '/root2']);
+    expect(config.sessionRoots).toEqual(['/root1', '/root2']);
   });
 
   it('should handle invalid number formats as NaN', () => {
@@ -92,6 +92,6 @@ describe('loadConfig', () => {
     const config = loadConfig(env);
 
     expect(config.watchSources).toEqual([]);
-    expect(config.codexRoots).toEqual([]);
+    expect(config.sessionRoots).toEqual([]);
   });
 });
