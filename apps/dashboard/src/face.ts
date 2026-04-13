@@ -1,4 +1,10 @@
-export type EntityStatus = "active" | "idle" | "sleepy" | "dormant" | "done" | "error";
+import {
+  getStatusFromTimestamp as getSharedStatusFromTimestamp,
+  resolveEntityStatus,
+  type EntityStatus
+} from "@agent-watch/event-schema";
+
+export type { DashboardEntity, EntityStatus } from "@agent-watch/event-schema";
 
 export interface ProviderPalette {
   base: string;
@@ -56,22 +62,6 @@ export type FaceVariant = "rounded-bot" | "square-bot" | "soft-ghost" | "termina
 export interface FaceShell {
   outline: Array<[number, number, number, number]>;
   fill: Array<[number, number, number, number]>;
-}
-
-export interface DashboardEntity {
-  entityId: string;
-  source: string;
-  sourceHost: string;
-  displayName: string;
-  entityKind: string;
-  currentStatus: EntityStatus;
-  lastEventAt: string;
-  lastSummary?: string;
-  activityScore: number;
-  sessionId?: string;
-  parentEntityId?: string | null;
-  groupKey?: string;
-  recentEvents?: string[];
 }
 
 function hashString(value: string): number {
@@ -185,18 +175,9 @@ export function getStatusLabel(status: EntityStatus): string {
 }
 
 export function getStatusFromTimestamp(timestamp: string): EntityStatus {
-  const ageMs = Date.now() - new Date(timestamp).getTime();
-  if (ageMs <= 10_000) return "active";
-  if (ageMs <= 30_000) return "idle";
-  if (ageMs <= 90_000) return "sleepy";
-  if (ageMs <= 300_000) return "dormant";
-  return "dormant";
+  return getSharedStatusFromTimestamp(timestamp);
 }
 
 export function resolveLiveStatus(currentStatus: EntityStatus | undefined, lastEventAt: string): EntityStatus {
-  if (currentStatus === "done" || currentStatus === "error") {
-    return currentStatus;
-  }
-
-  return getStatusFromTimestamp(lastEventAt);
+  return resolveEntityStatus(currentStatus, lastEventAt);
 }
