@@ -17,7 +17,13 @@ export function loadConfig(env: Record<string, string | undefined>): CollectorCo
     collectorId: env.COLLECTOR_ID ?? `collector-${os.hostname()}`,
     hostName: env.COLLECTOR_HOST ?? os.hostname(),
     hubUrl: env.HUB_URL ?? "http://localhost:3030",
-    hubToken: env.HUB_AUTH_TOKEN ?? "dev-secret",
+    hubToken: (() => {
+      const token = env.HUB_AUTH_TOKEN;
+      if (!token) {
+        throw new Error("HUB_AUTH_TOKEN environment variable is required");
+      }
+      return token;
+    })(),
     flushIntervalMs: Number(env.FLUSH_INTERVAL_MS ?? 500),
     maxBatchBytes: Number(env.MAX_BATCH_BYTES ?? 1_500_000),
     watchSources: (env.WATCH_SOURCES ?? "auto")
