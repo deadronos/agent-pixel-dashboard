@@ -1,16 +1,11 @@
-import type { NormalizedEvent } from "@agent-watch/event-schema";
-
-interface BatchBody {
-  collectorId: string;
-  events: NormalizedEvent[];
-}
+import type { IngestBatchBody, NormalizedEvent } from "@agent-watch/event-schema";
 
 export interface BuildBatchOptions {
   collectorId: string;
   maxBytes: number;
 }
 
-function serialize(body: BatchBody): string {
+function serialize(body: IngestBatchBody): string {
   return JSON.stringify(body);
 }
 

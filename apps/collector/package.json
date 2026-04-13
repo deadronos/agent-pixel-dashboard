@@ -12,6 +12,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@agent-watch/env-loader": "0.1.0",
     "@agent-watch/plugin-claude-watch": "0.1.0",
     "@agent-watch/plugin-copilot-watch": "0.1.0",
     "@agent-watch/event-schema": "0.1.0",

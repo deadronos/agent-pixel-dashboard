@@ -1,4 +1,4 @@
-import type { NormalizedEvent } from "@agent-watch/event-schema";
+import type { ConversationDetailPayload, NormalizedEvent } from "@agent-watch/event-schema";
 import type { RequestHandler } from "express";
 
 import { computeStatus, type EntityState } from "./state.js";
@@ -8,20 +8,6 @@ export interface ConversationDetailQuery {
   sessionId?: string;
   entityId?: string;
   limit?: unknown;
-}
-
-export interface ConversationDetailPayload {
-  groupId: string;
-  group: {
-    source: string;
-    sessionId?: string;
-    entityId?: string;
-  };
-  matchedBy: "session" | "entity";
-  current: EntityState;
-  representative: EntityState;
-  members: EntityState[];
-  recentEvents: NormalizedEvent[];
 }
 
 export interface ConversationDetailContext {

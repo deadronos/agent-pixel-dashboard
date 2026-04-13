@@ -10,6 +10,7 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@agent-watch/event-schema": "0.1.0"
+    "@agent-watch/event-schema": "0.1.0",
+    "chokidar": "^4.0.3"
   }
 }

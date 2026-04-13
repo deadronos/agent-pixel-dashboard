@@ -9,10 +9,12 @@ export interface CollectorConfig {
   maxBatchBytes: number;
   watchSources: string[];
   pluginsDir: string;
-  codexRoots: string[];
+  sessionRoots: string[];
 }
 
 export function loadConfig(env: Record<string, string | undefined>): CollectorConfig {
+  const sessionRootsSource = env.SESSION_ROOTS ?? env.CODEX_SESSION_ROOTS ?? "";
+
   return {
     collectorId: env.COLLECTOR_ID ?? `collector-${os.hostname()}`,
     hostName: env.COLLECTOR_HOST ?? os.hostname(),
@@ -25,7 +27,7 @@ export function loadConfig(env: Record<string, string | undefined>): CollectorCo
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean),
     pluginsDir: env.PLUGINS_DIR ?? "",
-    codexRoots: (env.CODEX_SESSION_ROOTS ?? "")
+    sessionRoots: sessionRootsSource
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean)

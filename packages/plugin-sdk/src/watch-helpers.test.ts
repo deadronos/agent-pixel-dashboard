@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { collectJsonlFiles } from "./polling.js";
+import { collectJsonlFiles } from "./watch-helpers.js";
 
 const createdDirs: string[] = [];
 
@@ -17,7 +17,7 @@ afterEach(async () => {
 });
 
 async function makeTempDir(): Promise<string> {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-watch-"));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "plugin-sdk-watch-"));
   createdDirs.push(dir);
   return dir;
 }
