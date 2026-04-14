@@ -132,7 +132,7 @@ describe("SettingsPanel", () => {
     expect(markup).toContain('value="night-shift" selected');
   });
 
-  it("exposes an explicit settings toggle and art style selector", () => {
+  it("groups settings into clearer layout, display, and filter sections", () => {
     const settings = createResolvedSettings(dashboardConfig, {});
 
     const markup = renderToStaticMarkup(
@@ -144,7 +144,11 @@ describe("SettingsPanel", () => {
       })
     );
 
-    expect(markup).toContain('aria-label="Open settings panel"');
+    expect(markup).toContain('aria-label="Dashboard settings"');
+    expect(markup).toContain("Layout");
+    expect(markup).toContain("Display");
+    expect(markup).toContain("Filters");
+    expect(markup).toContain("Reset view");
     expect(markup).toContain("Art style");
     expect(markup).toContain('value="playful" selected');
   });
