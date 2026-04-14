@@ -5,7 +5,7 @@ import {
   type HubHelloMessage
 } from "@agent-watch/event-schema";
 import cors from "cors";
-import express from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
 import { WebSocketServer, WebSocket } from "ws";
 
 import { createBatchHandler } from "./batch-handler.js";
@@ -20,6 +20,35 @@ const app = express();
 const corsOrigins = (process.env.HUB_CORS_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
 app.use(cors(getHubCorsOptions(corsOrigins)));
 app.use(express.json({ limit: "2mb" }));
+
+// Simple in-memory rate limiter for the ingest endpoint
+const hubRateLimitWindowMs = Number(process.env.HUB_RATE_LIMIT_WINDOW_MS ?? 60000);
+const hubRateLimitMax = Number(process.env.HUB_RATE_LIMIT_MAX ?? 60);
+const _rateLimitStore = new Map<string, { count: number; windowEnd: number }>();
+function eventsRateLimiter(req: Request, res: Response, next: NextFunction): void {
+  const key = (req.ip || (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim() || 'unknown');
+  const now = Date.now();
+  const entry = _rateLimitStore.get(key);
+  if (!entry || now > entry.windowEnd) {
+    _rateLimitStore.set(key, { count: 1, windowEnd: now + hubRateLimitWindowMs });
+    next();
+    return;
+  }
+  if (entry.count >= hubRateLimitMax) {
+    res.status(429).json({ error: 'rate_limited', message: 'Too many requests' });
+    return;
+  }
+  entry.count += 1;
+  _rateLimitStore.set(key, entry);
+  next();
+}
+// periodic cleanup
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _rateLimitStore) {
+    if (v.windowEnd < now) _rateLimitStore.delete(k);
+  }
+}, hubRateLimitWindowMs);
 
 const authToken = process.env.HUB_AUTH_TOKEN;
 if (!authToken) {
@@ -54,7 +83,7 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, entities: store.entityCount, recentEvents: store.recentEventCount });
 });
 
-app.post("/api/events/batch", createBatchHandler({ authToken, store, broadcast }));
+app.post("/api/events/batch", eventsRateLimiter, createBatchHandler({ authToken, store, broadcast }));
 app.get("/api/state", createStateHandler(store));
 app.get("/api/events/recent", createRecentEventsHandler({ authToken, store }));
 

@@ -16,13 +16,13 @@ describe('loadConfig', () => {
   });
 
   it('should return default config when empty environment is passed', () => {
-    const config = loadConfig({});
+    const config = loadConfig({ HUB_AUTH_TOKEN: 'test-token' });
 
     expect(config).toEqual({
       collectorId: 'collector-test-host',
       hostName: 'test-host',
       hubUrl: 'http://localhost:3030',
-      hubToken: 'dev-secret',
+      hubToken: 'test-token',
       flushIntervalMs: 500,
       maxBatchBytes: 1500000,
       watchSources: ['auto'],
@@ -63,6 +63,7 @@ describe('loadConfig', () => {
     const env = {
       WATCH_SOURCES: '  auto  , , DoCker  ,  ',
       CODEX_SESSION_ROOTS: '  /root1  ,, /root2 , ',
+      HUB_AUTH_TOKEN: 'test-token',
     };
 
     const config = loadConfig(env);
@@ -75,6 +76,7 @@ describe('loadConfig', () => {
     const env = {
       FLUSH_INTERVAL_MS: 'invalid',
       MAX_BATCH_BYTES: 'invalid',
+      HUB_AUTH_TOKEN: 'test-token',
     };
 
     const config = loadConfig(env);
@@ -87,6 +89,7 @@ describe('loadConfig', () => {
     const env = {
       WATCH_SOURCES: '',
       CODEX_SESSION_ROOTS: '',
+      HUB_AUTH_TOKEN: 'test-token',
     };
 
     const config = loadConfig(env);

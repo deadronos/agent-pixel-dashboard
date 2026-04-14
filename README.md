@@ -22,7 +22,7 @@ npm run dev:hub
 In another shell:
 
 ```bash
-HUB_AUTH_TOKEN=dev-secret npm run dev:collector
+HUB_AUTH_TOKEN=<your-token> npm run dev:collector
 ```
 
 In another shell:
