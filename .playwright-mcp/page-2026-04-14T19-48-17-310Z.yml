@@ -1,0 +1,97 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - paragraph [ref=e7]: Live session mural
+        - heading "Agent Watch" [level=1] [ref=e8]
+        - paragraph [ref=e9]: Tracking 1 conversations. Latest activity at 21:47.
+      - generic [ref=e10]:
+        - generic "Conversation status summary" [ref=e11]:
+          - generic [ref=e12]:
+            - strong [ref=e13]: "1"
+            - generic [ref=e14]: Total
+          - generic [ref=e15]:
+            - strong [ref=e16]: "0"
+            - generic [ref=e17]: Active
+          - generic [ref=e18]:
+            - strong [ref=e19]: "0"
+            - generic [ref=e20]: Idle
+          - generic [ref=e21]:
+            - strong [ref=e22]: "0"
+            - generic [ref=e23]: Dormant
+        - generic [ref=e24]:
+          - generic [ref=e25]: Live
+          - paragraph [ref=e26]: Latest event 21:47.
+        - button "Hide settings panel" [ref=e27] [cursor=pointer]: Hide settings
+    - complementary "Dashboard settings" [ref=e28]:
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - paragraph [ref=e31]: Local overrides
+          - heading "Settings" [level=2] [ref=e32]
+          - paragraph [ref=e33]: Tune the mural without touching the shared hub config.
+        - button "Reset view" [ref=e34]
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - heading "Layout" [level=3] [ref=e38]
+            - paragraph [ref=e39]: Control how dense the wall feels and which conversations stay in frame.
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - generic [ref=e42]: Max agents shown
+              - generic [ref=e43]:
+                - slider "Max agents shown" [ref=e44]: "12"
+                - status [ref=e45]: "12"
+            - generic [ref=e46]:
+              - generic [ref=e47]: Density
+              - combobox "Density" [ref=e48]:
+                - option "Comfortable" [selected]
+                - option "Compact"
+            - generic [ref=e49]:
+              - generic [ref=e50]: Sort by
+              - combobox "Sort by" [ref=e51]:
+                - option "Activity" [selected]
+                - option "Recent"
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - heading "Display" [level=3] [ref=e54]
+            - paragraph [ref=e55]: Adjust the theme and visual style without changing the underlying data.
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic [ref=e58]: Theme
+              - combobox "Theme" [ref=e59]:
+                - option "Sunrise Arcade" [selected]
+                - option "Night Shift"
+            - generic [ref=e60]:
+              - generic [ref=e61]: Art style
+              - combobox "Art style" [ref=e62]:
+                - option "Config"
+                - option "Playful" [selected]
+                - option "Minimal"
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - heading "Filters" [level=3] [ref=e65]
+            - paragraph [ref=e66]: Trim the live wall to the conversations that matter most right now.
+          - generic [ref=e67]:
+            - generic [ref=e68]:
+              - checkbox "Hide dormant" [ref=e69]
+              - generic [ref=e70]: Hide dormant
+            - generic [ref=e71]:
+              - checkbox "Hide done" [ref=e72]
+              - generic [ref=e73]: Hide done
+            - generic [ref=e74]:
+              - generic [ref=e76]: Sources
+              - generic [ref=e78]:
+                - checkbox "openclaw" [checked] [ref=e79]
+                - generic [ref=e80]: openclaw
+            - generic [ref=e81]:
+              - generic [ref=e83]: Entity kinds
+              - generic [ref=e85]:
+                - checkbox "session" [checked] [ref=e86]
+                - generic [ref=e87]: session
+    - button "teleclaw Sleepy assistant openclaw on localhost" [ref=e89] [cursor=pointer]:
+      - generic:
+        - generic: teleclaw
+        - generic: Sleepy
+      - generic:
+        - generic: assistant
+        - generic: openclaw on localhost
