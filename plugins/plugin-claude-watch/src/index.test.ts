@@ -9,7 +9,7 @@ describe("getClaudeProjectKey", () => {
   });
 
   it("handles windows-style backslashes", () => {
-    const filePath = "C:\Users\test\.claude\projects\work-project\sessions\abc.jsonl";
+    const filePath = "C:\\Users\\test\\.claude\\projects\\work-project\\sessions\\abc.jsonl";
     expect(getClaudeProjectKey(filePath)).toBe("work-project");
   });
 });
