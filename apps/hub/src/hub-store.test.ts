@@ -68,4 +68,22 @@ describe("HubStore", () => {
     store.expire(new Date("2026-04-09T20:00:01.000Z"));
     expect(store.entityCount).toBe(0);
   });
+
+  it("continues processing remaining events after a parse failure (partial batch)", () => {
+    const store = new HubStore();
+    const result = store.ingestBatch({
+      collectorId: "collector-a",
+      events: [
+        sampleEvent({ eventId: "evt_1", entityId: "codex:session:s1" }),
+        { bad: "event" }, // fails parse
+        sampleEvent({ eventId: "evt_2", entityId: "codex:session:s2" }),
+        { also: "bad" },  // fails parse
+        sampleEvent({ eventId: "evt_3", entityId: "codex:session:s3" }),
+      ],
+    });
+
+    expect(result.accepted.map((e) => e.eventId)).toEqual(["evt_1", "evt_2", "evt_3"]);
+    expect(result.rejected).toBe(2);
+    expect(store.entityCount).toBe(3);
+  });
 });
