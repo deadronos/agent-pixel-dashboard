@@ -14,6 +14,7 @@ import { createConversationDetailHandler } from "./conversation-detail.js";
 import { getHubCorsOptions } from "./cors.js";
 import { HubStore } from "./hub-store.js";
 import { createRecentEventsHandler } from "./recent-events-handler.js";
+import { createRateLimiter } from "./rate-limiter.js";
 import { createStateHandler } from "./state-handler.js";
 
 const app = express();
@@ -24,29 +25,16 @@ app.use(express.json({ limit: "2mb" }));
 // Simple in-memory rate limiter for the ingest endpoint
 const hubRateLimitWindowMs = Number(process.env.HUB_RATE_LIMIT_WINDOW_MS ?? 60000);
 const hubRateLimitMax = Number(process.env.HUB_RATE_LIMIT_MAX ?? 60);
-const _rateLimitStore = new Map<string, { count: number; windowEnd: number }>();
-function eventsRateLimiter(req: Request, res: Response, next: NextFunction): void {
-  const key = (req.ip || (req.headers['x-forwarded-for'] || '').toString().split(',')[0].trim() || 'unknown');
-  const now = Date.now();
-  const entry = _rateLimitStore.get(key);
-  if (!entry || now > entry.windowEnd) {
-    _rateLimitStore.set(key, { count: 1, windowEnd: now + hubRateLimitWindowMs });
-    next();
-    return;
-  }
-  if (entry.count >= hubRateLimitMax) {
-    res.status(429).json({ error: 'rate_limited', message: 'Too many requests' });
-    return;
-  }
-  entry.count += 1;
-  _rateLimitStore.set(key, entry);
-  next();
-}
-// periodic cleanup
+const { middleware: eventsRateLimiter, store: rateLimitStore } = createRateLimiter({
+  windowMs: hubRateLimitWindowMs,
+  max: hubRateLimitMax,
+});
+
+// Periodic cleanup of expired rate limit entries
 setInterval(() => {
   const now = Date.now();
-  for (const [k, v] of _rateLimitStore) {
-    if (v.windowEnd < now) _rateLimitStore.delete(k);
+  for (const [k, v] of rateLimitStore) {
+    if (v.windowEnd < now) rateLimitStore.delete(k);
   }
 }, hubRateLimitWindowMs);
 
