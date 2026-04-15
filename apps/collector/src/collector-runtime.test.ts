@@ -173,8 +173,6 @@ describe('CollectorRuntime', () => {
 
   describe('attachPlugins', () => {
     it('calls onError handler when plugin reports an error', async () => {
-      const onErrorMock = vi.fn<(error: Error) => void>();
-
       // We need to capture the onError callback passed to watch
       let capturedOnError: ((error: Error) => void) | undefined;
       const watchFn = vi.fn<
@@ -200,12 +198,55 @@ describe('CollectorRuntime', () => {
       await runtime.attachPlugins([plugin]);
 
       expect(capturedOnError).toBeDefined();
-      capturedOnError!(new Error('plugin error message'));
 
-      // The onError callback logs to console.error — we verify it was called by checking
-      // that the error was passed to it. Since CollectorRuntime logs via console.error,
-      // we can verify by checking the mock was invoked with the error.
-      expect(watchFn).toHaveBeenCalled();
+      // Spy on console.error to verify the onError callback actually invokes it
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        capturedOnError!(new Error('plugin error message'));
+        // The onError callback logs via console.error with the error message
+        expect(consoleSpy).toHaveBeenCalledWith(
+          expect.stringContaining('test-plugin'),
+          'plugin error message'
+        );
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it('swallows errors thrown inside onEvent callback without crashing the runtime', async () => {
+      let capturedOnEvent: ((event: NormalizedEvent) => void) | undefined;
+      const watchFn = vi.fn<
+        [DiscoveredSessionRoot, { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }],
+        Promise<WatchHandle>
+      >(
+        (_root, ctx) => {
+          capturedOnEvent = ctx.onEvent;
+          return Promise.resolve(makeWatchHandle());
+        }
+      );
+
+      const plugin: CollectorPlugin = {
+        id: 'test-plugin',
+        source: 'test-plugin',
+        discover: vi.fn<[], Promise<DiscoveredSessionRoot[]>>(
+          () => Promise.resolve([{ id: 'root1', path: '/test', host: 'test-host' }])
+        ),
+        watch: watchFn,
+      };
+
+      const runtime = new CollectorRuntime(config, hubClient);
+      await runtime.attachPlugins([plugin]);
+
+      expect(capturedOnEvent).toBeDefined();
+
+      // Passing an invalid event causes parseNormalizedEvent (inside enqueue) to throw.
+      // The onEvent callback wraps enqueue in try/catch, so the error must be swallowed.
+      expect(() => capturedOnEvent!({} as NormalizedEvent)).not.toThrow();
+
+      // Runtime remains functional after the silent catch
+      runtime.enqueue(mkEvent(1));
+      await runtime.flush();
+      expect(hubClient.postBodies).toHaveBeenCalled();
     });
   });
 });
