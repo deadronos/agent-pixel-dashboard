@@ -15,6 +15,7 @@ export class CollectorRuntime {
   private timer: ReturnType<typeof setInterval> | undefined;
   private readonly config: CollectorConfig;
   private readonly hubClient: HubClient;
+  private droppedCount = 0;
 
   constructor(config: CollectorConfig, hubClient: HubClient) {
     this.config = config;
@@ -24,8 +25,13 @@ export class CollectorRuntime {
   enqueue(event: NormalizedEvent): void {
     if (this.queue.length >= MAX_QUEUE_SIZE) {
       this.queue.shift();
+      this.droppedCount++;
     }
     this.queue.push(parseNormalizedEvent(event));
+  }
+
+  getDroppedCount(): number {
+    return this.droppedCount;
   }
 
   async flush(): Promise<void> {

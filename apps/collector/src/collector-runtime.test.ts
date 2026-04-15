@@ -96,6 +96,8 @@ describe('CollectorRuntime', () => {
 
       // Queue should still be at max size
       expect((runtime as unknown as { queue: NormalizedEvent[] }).queue).toHaveLength(MAX_QUEUE_SIZE);
+      // The droppedCount should reflect the overflow
+      expect(runtime.getDroppedCount()).toBe(1);
       // The last event should be in the queue
       expect((runtime as unknown as { queue: NormalizedEvent[] }).queue[MAX_QUEUE_SIZE - 1].eventId).toBe(`evt_${MAX_QUEUE_SIZE}`);
       // The first event (evt_0) should be gone
