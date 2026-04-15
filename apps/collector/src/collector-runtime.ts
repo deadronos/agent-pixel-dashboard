@@ -16,6 +16,7 @@ export class CollectorRuntime {
   private readonly config: CollectorConfig;
   private readonly hubClient: HubClient;
   private droppedCount = 0;
+  private flushing = false;
 
   constructor(config: CollectorConfig, hubClient: HubClient) {
     this.config = config;
@@ -35,10 +36,14 @@ export class CollectorRuntime {
   }
 
   async flush(): Promise<void> {
+    if (this.flushing) {
+      return;
+    }
     if (this.queue.length === 0) {
       return;
     }
 
+    this.flushing = true;
     const payload = this.queue.splice(0, this.queue.length);
     const bodies = buildSizedBatches(payload, {
       collectorId: this.config.collectorId,
@@ -50,6 +55,8 @@ export class CollectorRuntime {
     } catch (error) {
       this.queue.unshift(...payload);
       throw error;
+    } finally {
+      this.flushing = false;
     }
   }
 

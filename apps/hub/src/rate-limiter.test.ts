@@ -30,6 +30,45 @@ function createMockRes() {
 }
 
 describe("createRateLimiter", () => {
+  describe("cleanup", () => {
+    it("removes entries whose window has expired", () => {
+      const { middleware: limiter, cleanup, store } = createRateLimiter({ windowMs: 10_000, max: 3 });
+      const req = createMockReq({ ip: "192.168.1.1" });
+      const res = createMockRes();
+      const next = vi.fn();
+
+      // Exhaust the window for IP
+      for (let i = 0; i < 3; i++) {
+        limiter(req, res as any, next as any);
+      }
+
+      // Entry is in store and exhausted
+      expect(store.get("192.168.1.1")!.count).toBe(3);
+
+      // Simulate time advancing by directly mutating windowEnd to the past
+      store.get("192.168.1.1")!.windowEnd = Date.now() - 1;
+
+      // Run cleanup
+      cleanup();
+
+      // Entry should be removed
+      expect(store.has("192.168.1.1")).toBe(false);
+    });
+
+    it("does not remove entries still within their window", () => {
+      const { middleware: limiter, cleanup, store } = createRateLimiter({ windowMs: 10_000, max: 3 });
+      const req = createMockReq({ ip: "192.168.1.1" });
+      const res = createMockRes();
+      const next = vi.fn();
+
+      limiter(req, res as any, next as any);
+
+      expect(store.has("192.168.1.1")).toBe(true);
+      cleanup();
+      expect(store.has("192.168.1.1")).toBe(true);
+    });
+  });
+
   describe("first request in new window", () => {
     it("allows first request and sets counter", () => {
       const { middleware: limiter } = createRateLimiter({ windowMs: 60_000, max: 3 });

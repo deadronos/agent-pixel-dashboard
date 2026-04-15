@@ -30,5 +30,16 @@ export function createRateLimiter(options: RateLimiterOptions) {
     next();
   };
 
-  return { middleware, store };
+  function cleanup(): void {
+    const now = Date.now();
+    // Snapshot keys first to avoid concurrent-modification during deletion
+    for (const key of [...store.keys()]) {
+      const entry = store.get(key);
+      if (entry && entry.windowEnd < now) {
+        store.delete(key);
+      }
+    }
+  }
+
+  return { middleware, store, cleanup };
 }

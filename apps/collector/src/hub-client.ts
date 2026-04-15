@@ -18,7 +18,8 @@ export class HubClient {
           "content-type": "application/json",
           authorization: `Bearer ${this.options.hubToken}`
         },
-        body
+        body,
+        signal: AbortSignal.timeout(5000)
       });
 
       if (!response.ok) {

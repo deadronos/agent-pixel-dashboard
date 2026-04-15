@@ -25,17 +25,14 @@ app.use(express.json({ limit: "2mb" }));
 // Simple in-memory rate limiter for the ingest endpoint
 const hubRateLimitWindowMs = Number(process.env.HUB_RATE_LIMIT_WINDOW_MS ?? 60000);
 const hubRateLimitMax = Number(process.env.HUB_RATE_LIMIT_MAX ?? 60);
-const { middleware: eventsRateLimiter, store: rateLimitStore } = createRateLimiter({
+const { middleware: eventsRateLimiter, cleanup: rateLimitCleanup } = createRateLimiter({
   windowMs: hubRateLimitWindowMs,
   max: hubRateLimitMax,
 });
 
 // Periodic cleanup of expired rate limit entries
 setInterval(() => {
-  const now = Date.now();
-  for (const [k, v] of rateLimitStore) {
-    if (v.windowEnd < now) rateLimitStore.delete(k);
-  }
+  rateLimitCleanup();
 }, hubRateLimitWindowMs);
 
 const authToken = process.env.HUB_AUTH_TOKEN;

@@ -134,6 +134,32 @@ describe('CollectorRuntime', () => {
       expect((runtime as unknown as { queue: NormalizedEvent[] }).queue).toHaveLength(2);
       expect(hubClient.postBodies).toHaveBeenCalledTimes(1);
     });
+
+    it('deduplicates concurrent flush calls — second flush returns early while first is in flight', async () => {
+      let resolvePostBodies: () => void;
+      hubClient.postBodies = vi.fn<[], Promise<void>>(
+        () => new Promise((resolve) => { resolvePostBodies = resolve; })
+      );
+
+      const runtime = new CollectorRuntime(config, hubClient);
+      runtime.enqueue(mkEvent(1));
+
+      // Fire two flushes concurrently
+      const flush1 = runtime.flush();
+      const flush2 = runtime.flush();
+
+      // Second flush should return early (no second postBodies call)
+      await new Promise((r) => setTimeout(r, 10));
+      expect(hubClient.postBodies).toHaveBeenCalledTimes(1);
+
+      // Resolve the in-flight postBodies
+      resolvePostBodies!();
+      await flush1;
+      await flush2;
+
+      // Queue should be empty
+      expect((runtime as unknown as { queue: NormalizedEvent[] }).queue).toHaveLength(0);
+    });
   });
 
   describe('stop', () => {

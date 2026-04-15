@@ -46,7 +46,14 @@ export function useLiveEntities(hubHttp: string, hubWs: string): {
   }, [hubHttp]);
 
   useEffect(() => {
-    const socket = new WebSocket(hubWs);
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(hubWs);
+    } catch {
+      setConnectionState("offline");
+      return;
+    }
+
     socket.addEventListener("open", () => setConnectionState("live"));
     socket.addEventListener("close", () => setConnectionState("offline"));
     socket.addEventListener("error", () => setConnectionState("offline"));
