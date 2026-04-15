@@ -45,6 +45,7 @@ export class HubStore {
       try {
         const event = parseNormalizedEvent(entry);
         if (!this.recentEvents.add(event)) {
+          rejected++;
           continue;
         }
         accepted.push(event);

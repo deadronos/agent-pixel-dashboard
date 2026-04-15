@@ -38,7 +38,7 @@ describe("HubStore", () => {
     });
 
     expect(result.accepted.map((event) => event.eventId)).toEqual(["evt_1"]);
-    expect(result.rejected).toBe(1);
+    expect(result.rejected).toBe(2); // 1 duplicate + 1 invalid row
     expect(store.entityCount).toBe(1);
     expect(store.recentEventCount).toBe(1);
   });
