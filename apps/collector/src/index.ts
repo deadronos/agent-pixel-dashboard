@@ -30,19 +30,14 @@ async function main(): Promise<void> {
   const shutdown = async (): Promise<void> => {
     try {
       await runtime.stop();
-      process.exit(0);
     } catch (error) {
       console.error("flush failed during shutdown:", error instanceof Error ? error.message : String(error));
-      process.exit(1);
     }
+    process.exit(0);
   };
 
-  process.on("SIGINT", () => {
-    void shutdown();
-  });
-  process.on("SIGTERM", () => {
-    void shutdown();
-  });
+  process.on("SIGINT", shutdown, { once: true });
+  process.on("SIGTERM", shutdown, { once: true });
 }
 
 void main().catch((error) => {

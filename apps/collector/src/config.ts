@@ -20,6 +20,21 @@ function requireHubToken(env: Record<string, string | undefined>): string {
   return token;
 }
 
+function clampFlushIntervalMs(value: number): number {
+  // setInterval(fn, 0) spins — enforce minimum of 100ms
+  if (!Number.isFinite(value) || value < 100) {
+    return 500;
+  }
+  return Math.min(value, 3_600_000); // cap at 1 hour
+}
+
+function clampMaxBatchBytes(value: number): number {
+  if (!Number.isFinite(value) || value < 1024) {
+    return 1_500_000;
+  }
+  return Math.min(value, 10_000_000); // cap at 10MB
+}
+
 export function loadConfig(env: Record<string, string | undefined>): CollectorConfig {
   const sessionRootsSource = env.SESSION_ROOTS ?? env.CODEX_SESSION_ROOTS ?? "";
 
@@ -28,8 +43,8 @@ export function loadConfig(env: Record<string, string | undefined>): CollectorCo
     hostName: env.COLLECTOR_HOST ?? os.hostname(),
     hubUrl: env.HUB_URL ?? "http://localhost:3030",
     hubToken: requireHubToken(env),
-    flushIntervalMs: Number(env.FLUSH_INTERVAL_MS ?? 500),
-    maxBatchBytes: Number(env.MAX_BATCH_BYTES ?? 1_500_000),
+    flushIntervalMs: clampFlushIntervalMs(Number(env.FLUSH_INTERVAL_MS ?? 500)),
+    maxBatchBytes: clampMaxBatchBytes(Number(env.MAX_BATCH_BYTES ?? 1_500_000)),
     watchSources: (env.WATCH_SOURCES ?? "auto")
       .split(",")
       .map((value) => value.trim().toLowerCase())

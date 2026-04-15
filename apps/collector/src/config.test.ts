@@ -72,7 +72,7 @@ describe('loadConfig', () => {
     expect(config.sessionRoots).toEqual(['/root1', '/root2']);
   });
 
-  it('should handle invalid number formats as NaN', () => {
+  it('should handle invalid number formats by falling back to defaults', () => {
     const env = {
       FLUSH_INTERVAL_MS: 'invalid',
       MAX_BATCH_BYTES: 'invalid',
@@ -81,8 +81,9 @@ describe('loadConfig', () => {
 
     const config = loadConfig(env);
 
-    expect(Number.isNaN(config.flushIntervalMs)).toBe(true);
-    expect(Number.isNaN(config.maxBatchBytes)).toBe(true);
+    // Invalid strings become NaN; clamp functions fall back to defaults
+    expect(config.flushIntervalMs).toBe(500);
+    expect(config.maxBatchBytes).toBe(1_500_000);
   });
 
   it('should handle empty string environment variables', () => {
@@ -96,5 +97,25 @@ describe('loadConfig', () => {
 
     expect(config.watchSources).toEqual([]);
     expect(config.sessionRoots).toEqual([]);
+  });
+
+  it('should fall back to default for flushIntervalMs=0 (spin-loop guard)', () => {
+    const config = loadConfig({ FLUSH_INTERVAL_MS: '0', HUB_AUTH_TOKEN: 'test-token' });
+    expect(config.flushIntervalMs).toBe(500);
+  });
+
+  it('should cap flushIntervalMs at 1 hour', () => {
+    const config = loadConfig({ FLUSH_INTERVAL_MS: '999999999', HUB_AUTH_TOKEN: 'test-token' });
+    expect(config.flushIntervalMs).toBe(3_600_000);
+  });
+
+  it('should fall back to default for maxBatchBytes below 1KB', () => {
+    const config = loadConfig({ MAX_BATCH_BYTES: '100', HUB_AUTH_TOKEN: 'test-token' });
+    expect(config.maxBatchBytes).toBe(1_500_000);
+  });
+
+  it('should cap maxBatchBytes at 10MB', () => {
+    const config = loadConfig({ MAX_BATCH_BYTES: '99999999999', HUB_AUTH_TOKEN: 'test-token' });
+    expect(config.maxBatchBytes).toBe(10_000_000);
   });
 });
