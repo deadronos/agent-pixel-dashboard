@@ -12,24 +12,34 @@ import { createRecentEventsHandler } from "./recent-events-handler.js";
 import { createRateLimiter } from "./rate-limiter.js";
 import { createStateHandler } from "./state-handler.js";
 
-export async function startTestHub(authToken = "test-token"): Promise<{
+export interface StartTestHubOptions {
+  authToken?: string;
+  rateLimiterMax?: number;
+  rateLimiterWindowMs?: number;
+}
+
+export async function startTestHub(options: StartTestHubOptions = {}): Promise<{
   baseUrl: string;
   port: number;
   store: HubStore;
   close: () => Promise<void>;
 }> {
+  const authToken = options.authToken ?? "test-token";
+  const rateLimiterMax = options.rateLimiterMax ?? 10_000;
+  const rateLimiterWindowMs = options.rateLimiterWindowMs ?? 60_000;
+
   // Set auth token before any hub module reads process.env.HUB_AUTH_TOKEN
   const originalAuthToken = process.env.HUB_AUTH_TOKEN;
-  process.env.HUB_AUTH_TOKEN = authToken ?? "test-secret";
+  process.env.HUB_AUTH_TOKEN = authToken;
 
   const app = express();
   app.use(cors(getHubCorsOptions([])));
   app.use(express.json({ limit: "2mb" }));
 
-  // Generous rate limit so tests are not throttled
+  // Configurable rate limit so tests can exercise throttling
   const { middleware: eventsRateLimiter } = createRateLimiter({
-    windowMs: 60_000,
-    max: 10_000,
+    windowMs: rateLimiterWindowMs,
+    max: rateLimiterMax,
   });
 
   const store = new HubStore();

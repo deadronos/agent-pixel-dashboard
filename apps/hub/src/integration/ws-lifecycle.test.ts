@@ -10,7 +10,7 @@ describe("WebSocket lifecycle", () => {
   let baseUrl: string;
 
   beforeEach(async () => {
-    const hub = await startTestHub(authToken);
+    const hub = await startTestHub({ authToken });
     close = hub.close;
     baseUrl = hub.baseUrl;
   });

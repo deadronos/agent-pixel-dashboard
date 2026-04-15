@@ -9,7 +9,7 @@ describe("entity session lifecycle", () => {
   let hub: Awaited<ReturnType<typeof startTestHub>>;
 
   beforeEach(async () => {
-    hub = await startTestHub(authToken);
+    hub = await startTestHub({ authToken });
   });
 
   afterEach(async () => {
