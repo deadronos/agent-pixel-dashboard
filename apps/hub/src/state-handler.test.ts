@@ -34,6 +34,7 @@ describe("createStateHandler", () => {
     handler(req, res as any, () => undefined);
 
     expect(res.body).toEqual({ entities: [{ id: "1", status: "idle" }] });
+    expect(getState).toHaveBeenCalledWith(false, expect.any(Date));
   });
 
   it("returns all entities including dormant when includeDormant=1", () => {
@@ -46,6 +47,7 @@ describe("createStateHandler", () => {
     handler(req, res as any, () => undefined);
 
     expect(res.body).toEqual({ entities: [{ id: "1", status: "idle" }, { id: "2", status: "dormant" }] });
+    expect(getState).toHaveBeenCalledWith(true, expect.any(Date));
   });
 
   it("returns empty entities array from empty store", () => {
@@ -58,6 +60,7 @@ describe("createStateHandler", () => {
     handler(req, res as any, () => undefined);
 
     expect(res.body).toEqual({ entities: [] });
+    expect(getState).toHaveBeenCalledWith(false, expect.any(Date));
   });
 
   it("calls store.getState with correct includeDormant and now args", () => {
