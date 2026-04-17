@@ -11,20 +11,22 @@ export class HubClient {
   }
 
   async postBodies(bodies: readonly string[]): Promise<void> {
-    for (const body of bodies) {
-      const response = await fetch(`${this.options.hubUrl}/api/events/batch`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${this.options.hubToken}`
-        },
-        body,
-        signal: AbortSignal.timeout(5000)
-      });
+    await Promise.all(
+      bodies.map(async (body) => {
+        const response = await fetch(`${this.options.hubUrl}/api/events/batch`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${this.options.hubToken}`
+          },
+          body,
+          signal: AbortSignal.timeout(5000)
+        });
 
-      if (!response.ok) {
-        throw new Error(`hub rejected batch: ${response.status} ${response.statusText}`);
-      }
-    }
+        if (!response.ok) {
+          throw new Error(`hub rejected batch: ${response.status} ${response.statusText}`);
+        }
+      })
+    );
   }
 }
