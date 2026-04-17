@@ -140,21 +140,6 @@ If `fs.open` throws, `handle` is never assigned but `finally` still runs and tri
 
 Opens on mouseEnter, closes on mouseLeave. Unusual UX—users may accidentally trigger panel. Standard toggle button is more predictable.
 
-### 2.4 Invalid Palette Throws During Render
-
-**File:** `apps/dashboard/src/visual-profile.ts:72-81`
-
-```typescript
-function resolvePalette(...): ProviderPalette {
-  if (!isNamedPaletteId(themePalette)) {
-    throw new Error(`Unknown palette id: ${themePalette}`);  // BUG: throws during render
-  }
-  return getNamedPalette(themePalette);
-}
-```
-
-Invalid palette ID throws during React render. Not caught by error boundaries, will crash component. Should return fallback palette.
-
 ### 2.5 CASS Search Returns 500 Instead of 503 on Timeout
 
 **File:** `apps/hub/src/index.ts:183-188`
@@ -395,11 +380,11 @@ Hub has no rate limiting. Misbehaving collector could overwhelm it.
 | `apps/collector/src/env.ts`                  | 2.8                                                              |
 | `apps/collector/src/config.ts`               | 2.9                                                              |
 | `apps/collector/src/plugin-loader.ts`        | 2.10                                                             |
-| `apps/hub/src/index.ts`                      | 1.3, 1.4, 1.5, 1.6, 1.7, 2.5, 2.6, 2.11, 2.4, 3.3, 3.4, 3.6, 3.7 |
+| `apps/hub/src/index.ts`                      | 1.3, 1.4, 1.5, 1.6, 1.7, 2.5, 2.6, 2.11, 3.3, 3.4, 3.6, 3.7 |
 | `apps/hub/src/state.ts`                      | 2.12                                                             |
 | `apps/dashboard/src/App.tsx`                 | 2.12                                                             |
 | `apps/dashboard/src/face.ts`                 | 2.13, 3.1                                                        |
 | `apps/dashboard/src/SettingsPanel.tsx`       | 2.3                                                              |
-| `apps/dashboard/src/visual-profile.ts`       | 2.4, 3.2                                                         |
+| `apps/dashboard/src/visual-profile.ts`       | 3.2                                                              |
 | `apps/dashboard/src/dashboard-view.ts`       | 3.1                                                              |
 | `plugins/plugin-openclaw-watch/src/index.ts` | 2.1, 2.2                                                         |
