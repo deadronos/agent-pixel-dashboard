@@ -20,11 +20,14 @@ describe("DashboardTopbar", () => {
         },
         settingsPanelAvailable: true,
         settingsPanelOpen: false,
+        darkMode: false,
+        onToggleDarkMode: () => undefined,
         onToggleSettings: () => undefined,
       })
     );
 
     expect(markup).toContain("Show settings");
+    expect(markup).toContain("Switch to dark mode");
     expect(markup).toContain("Disconnected");
     expect(markup).toContain("Waiting for the first collector event.");
   });
@@ -45,11 +48,14 @@ describe("DashboardTopbar", () => {
         },
         settingsPanelAvailable: true,
         settingsPanelOpen: true,
+        darkMode: true,
+        onToggleDarkMode: () => undefined,
         onToggleSettings: () => undefined,
       })
     );
 
     expect(markup).toContain("Hide settings");
+    expect(markup).toContain("Switch to light mode");
     expect(markup).toContain("Tracking 3 conversations.");
     expect(markup).toContain("Latest event");
     expect(markup).toContain("Live");

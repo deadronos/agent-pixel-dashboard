@@ -109,7 +109,7 @@ export function DashboardTopbar({
           onClick={onToggleDarkMode}
           title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
         >
-          {darkMode ? "☀" : "☾"}
+          {darkMode ? "L" : "D"}
         </button>
         {settingsPanelAvailable ? (
           <button

@@ -37,13 +37,13 @@ export function App() {
     [viewerPreferences, filterOptions]
   );
   const statusSummary = useMemo(() => getEntityStatusSummary(entities), [entities]);
-  const darkThemeId = dashboardConfig.themes.presets.find((theme) => theme.id === "night-shift")?.id;
-  const lightThemeId = dashboardConfig.themes.defaultThemeId;
-  const darkMode = settings.theme.id === darkThemeId;
   const settings = useMemo(
     () => createResolvedSettings(dashboardConfig, activeViewerPreferences),
     [activeViewerPreferences]
   );
+  const darkThemeId = dashboardConfig.themes.presets.find((theme) => theme.id === "night-shift")?.id;
+  const lightThemeId = dashboardConfig.themes.defaultThemeId;
+  const darkMode = settings.theme.id === darkThemeId;
   const visibleGroups = useMemo(() => getVisibleEntityGroups(entities, settings), [entities, settings]);
   const selectedVisibleGroup = useMemo(
     () => findVisibleEntityGroupById(visibleGroups, selectedGroupId),
