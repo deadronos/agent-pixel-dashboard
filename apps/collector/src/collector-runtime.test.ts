@@ -1,9 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { NormalizedEvent } from '@agent-watch/event-schema';
 import type { CollectorPlugin, WatchHandle } from '@agent-watch/plugin-sdk';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { CollectorRuntime } from './collector-runtime.js';
 import type { CollectorConfig } from './config.js';
 import type { HubClient } from './hub-client.js';
-import { CollectorRuntime } from './collector-runtime.js';
-import type { NormalizedEvent } from '@agent-watch/event-schema';
 
 const MAX_QUEUE_SIZE = 10_000;
 
@@ -30,13 +31,15 @@ function mkEvent(id: number): NormalizedEvent {
 
 function makeHubClientMock(): HubClient {
   return {
-    postBodies: vi.fn<[], Promise<void>>(),
-  };
+    postBodies: vi.fn<() => Promise<void>>(),
+  } as unknown as HubClient;
 }
 
 function makeWatchHandle(closeFn?: () => void | Promise<void>): WatchHandle {
   return {
-    close: vi.fn<[], void | Promise<void>>(closeFn ?? (() => Promise.resolve())),
+    close: vi.fn<() => Promise<void>>(async () => {
+      await closeFn?.();
+    }),
   };
 }
 
@@ -44,10 +47,10 @@ function makePlugin(discoveredRoots?: DiscoveredSessionRoot[], watchHandle?: Wat
   return {
     id: 'test-plugin',
     source: 'test-plugin',
-    discover: vi.fn<[], Promise<DiscoveredSessionRoot[]>>(
+    discover: vi.fn<() => Promise<DiscoveredSessionRoot[]>>(
       () => Promise.resolve(discoveredRoots ?? [])
     ),
-    watch: vi.fn<[DiscoveredSessionRoot, { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }], Promise<WatchHandle>>(
+    watch: vi.fn<(root: DiscoveredSessionRoot, ctx: { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }) => Promise<WatchHandle>>(
       () => Promise.resolve(watchHandle ?? makeWatchHandle())
     ),
   };
@@ -64,9 +67,13 @@ function makeConfig(overrides: Partial<CollectorConfig> = {}): CollectorConfig {
   return {
     collectorId: 'test-collector',
     hostName: 'test-host',
+    hubUrl: 'http://localhost:3030',
+    hubToken: 'test-token',
     sessionRoots: [],
     flushIntervalMs: 60_000,
     maxBatchBytes: 1_500_000,
+    watchSources: ['auto'],
+    pluginsDir: '',
     ...overrides,
   };
 }
@@ -124,7 +131,7 @@ describe('CollectorRuntime', () => {
     });
 
     it('restores queue when hubClient.postBodies throws', async () => {
-      hubClient.postBodies = vi.fn<[], Promise<void>>(() => Promise.reject(new Error('network error')));
+      hubClient.postBodies = vi.fn<() => Promise<void>>(() => Promise.reject(new Error('network error')));
 
       const runtime = new CollectorRuntime(config, hubClient);
       runtime.enqueue(mkEvent(1));
@@ -137,8 +144,8 @@ describe('CollectorRuntime', () => {
 
     it('deduplicates concurrent flush calls — second flush returns early while first is in flight', async () => {
       let resolvePostBodies: () => void;
-      hubClient.postBodies = vi.fn<[], Promise<void>>(
-        () => new Promise((resolve) => { resolvePostBodies = resolve; })
+      hubClient.postBodies = vi.fn<() => Promise<void>>(
+        () => new Promise<void>((resolve) => { resolvePostBodies = resolve; })
       );
 
       const runtime = new CollectorRuntime(config, hubClient);
@@ -164,7 +171,7 @@ describe('CollectorRuntime', () => {
 
   describe('stop', () => {
     it('clears timer, closes handles, and calls flush', async () => {
-      const closeFn = vi.fn<[], void | Promise<void>>(() => Promise.resolve());
+      const closeFn = vi.fn<() => void | Promise<void>>(() => Promise.resolve());
       const handle = makeWatchHandle(closeFn);
       const plugin = makePlugin(
         [{ id: 'root1', path: '/test', host: 'test-host' }],
@@ -197,6 +204,28 @@ describe('CollectorRuntime', () => {
       expect(hubClient.postBodies).toHaveBeenCalled();
       expect((runtime as unknown as { queue: NormalizedEvent[] }).queue).toHaveLength(0);
     });
+
+    it('still flushes queued events when a watcher close fails', async () => {
+      const handle = makeWatchHandle(() => Promise.reject(new Error('close failed')));
+      const plugin = makePlugin(
+        [{ id: 'root1', path: '/test', host: 'test-host' }],
+        handle
+      );
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        const runtime = new CollectorRuntime(config, hubClient);
+        await runtime.attachPlugins([plugin]);
+        runtime.enqueue(mkEvent(1));
+
+        await runtime.stop();
+
+        expect(hubClient.postBodies).toHaveBeenCalled();
+        expect(consoleSpy).toHaveBeenCalledWith('watcher close failed', 'close failed');
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
   });
 
   describe('attachPlugins', () => {
@@ -204,10 +233,9 @@ describe('CollectorRuntime', () => {
       // We need to capture the onError callback passed to watch
       let capturedOnError: ((error: Error) => void) | undefined;
       const watchFn = vi.fn<
-        [DiscoveredSessionRoot, { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }],
-        Promise<WatchHandle>
+        (root: DiscoveredSessionRoot, ctx: { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }) => Promise<WatchHandle>
       >(
-        (_root, ctx) => {
+        (_root: DiscoveredSessionRoot, ctx: { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }) => {
           capturedOnError = ctx.onError;
           return Promise.resolve(makeWatchHandle());
         }
@@ -216,7 +244,7 @@ describe('CollectorRuntime', () => {
       const plugin: CollectorPlugin = {
         id: 'test-plugin',
         source: 'test-plugin',
-        discover: vi.fn<[], Promise<DiscoveredSessionRoot[]>>(
+        discover: vi.fn<() => Promise<DiscoveredSessionRoot[]>>(
           () => Promise.resolve([{ id: 'root1', path: '/test', host: 'test-host' }])
         ),
         watch: watchFn,
@@ -244,10 +272,9 @@ describe('CollectorRuntime', () => {
     it('swallows errors thrown inside onEvent callback without crashing the runtime', async () => {
       let capturedOnEvent: ((event: NormalizedEvent) => void) | undefined;
       const watchFn = vi.fn<
-        [DiscoveredSessionRoot, { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }],
-        Promise<WatchHandle>
+        (root: DiscoveredSessionRoot, ctx: { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }) => Promise<WatchHandle>
       >(
-        (_root, ctx) => {
+        (_root: DiscoveredSessionRoot, ctx: { onEvent: (e: NormalizedEvent) => void; onError: (e: Error) => void }) => {
           capturedOnEvent = ctx.onEvent;
           return Promise.resolve(makeWatchHandle());
         }
@@ -256,7 +283,7 @@ describe('CollectorRuntime', () => {
       const plugin: CollectorPlugin = {
         id: 'test-plugin',
         source: 'test-plugin',
-        discover: vi.fn<[], Promise<DiscoveredSessionRoot[]>>(
+        discover: vi.fn<() => Promise<DiscoveredSessionRoot[]>>(
           () => Promise.resolve([{ id: 'root1', path: '/test', host: 'test-host' }])
         ),
         watch: watchFn,

@@ -111,7 +111,15 @@ export class CollectorRuntime {
       this.timer = undefined;
     }
 
-    await Promise.all(this.handles.map((handle) => handle.close()));
+    const closeResults = await Promise.allSettled(this.handles.map((handle) => handle.close()));
+    for (const result of closeResults) {
+      if (result.status === "rejected") {
+        console.error(
+          "watcher close failed",
+          result.reason instanceof Error ? result.reason.message : String(result.reason)
+        );
+      }
+    }
     await this.flush();
   }
 }

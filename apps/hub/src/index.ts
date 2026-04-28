@@ -5,7 +5,7 @@ import {
   type HubHelloMessage
 } from "@agent-watch/event-schema";
 import cors from "cors";
-import express, { type Request, type Response, type NextFunction } from "express";
+import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 
 import { createBatchHandler } from "./batch-handler.js";

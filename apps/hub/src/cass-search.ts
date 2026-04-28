@@ -18,7 +18,11 @@ export interface SessionSearchResponse {
 }
 
 export class CassSearchClient {
-  constructor(private readonly binary = process.env.CASS_BIN ?? 'cass') {}
+  private readonly binary: string;
+
+  constructor(binary = process.env.CASS_BIN ?? 'cass') {
+    this.binary = binary;
+  }
 
   async isAvailable(): Promise<boolean> {
     try {

@@ -10,6 +10,9 @@ Watcher-first multi-agent observability stack from `idea.md`:
 - `plugins/plugin-gemini-watch`: gemini-cli session/transcript watcher plugin
 - `plugins/plugin-openclaw-watch`: openclaw session/transcript watcher plugin
 - `plugins/plugin-copilot-watch`: copilot-cli session/transcript watcher plugin
+- `plugins/plugin-opencode-watch`: OpenCode watcher plugin, preferring live SQLite state with JSON fallback
+- `plugins/plugin-hermes-watch`: Hermes agent session/transcript watcher plugin
+- `plugins/plugin-pi-watch`: Pi coding agent JSONL watcher plugin
 - optional CASS-backed session search at `GET /api/search/sessions`
 
 ## Quick start
@@ -73,6 +76,9 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `GEMINI_SESSION_ROOTS` (optional comma-separated session roots)
 - `OPENCLAW_SESSION_ROOTS` (optional comma-separated session roots)
 - `COPILOT_SESSION_ROOTS` (optional comma-separated session roots)
+- `OPENCODE_DATA_DIR` (optional OpenCode data directory; default `~/.local/share/opencode`)
+- `HERMES_DIR` (optional Hermes directory; default `~/.hermes`)
+- `PI_SESSION_ROOTS` (optional comma-separated Pi session roots)
 
 ### Optional Watcher Tuning
 
@@ -84,6 +90,13 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `OPENCLAW_SCAN_MAX_DEPTH` (default: `8`)
 - `OPENCLAW_SCAN_MAX_FILES` (default: `5000`)
 - `COPILOT_ACTIVE_WINDOW_MS` (default: `120000`)
+- `COPILOT_SCAN_INTERVAL_MS` (default: `2000`)
+- `COPILOT_SCAN_MAX_DEPTH` (default: `2`)
+- `COPILOT_SCAN_MAX_FILES` (default: `5000`)
+- `OPENCODE_ACTIVE_WINDOW_MS` (default: `120000`)
+- `OPENCODE_SCAN_INTERVAL_MS` (default: `2000`)
+- `HERMES_ACTIVE_WINDOW_MS` (default: `120000`)
+- `PI_ACTIVE_WINDOW_MS` (default: `120000`)
 
 ## CASS integration
 

@@ -17,6 +17,27 @@ describe("discoverCollectorPlugins", () => {
         packageName: "@agent-watch/plugin-codex-watch"
       })
     );
+    expect(registrations).toContainEqual(
+      expect.objectContaining({
+        source: "opencode",
+        directoryName: "plugin-opencode-watch",
+        packageName: "@agent-watch/plugin-opencode-watch"
+      })
+    );
+    expect(registrations).toContainEqual(
+      expect.objectContaining({
+        source: "hermes",
+        directoryName: "plugin-hermes-watch",
+        packageName: "@agent-watch/plugin-hermes-watch"
+      })
+    );
+    expect(registrations).toContainEqual(
+      expect.objectContaining({
+        source: "pi",
+        directoryName: "plugin-pi-watch",
+        packageName: "@agent-watch/plugin-pi-watch"
+      })
+    );
   });
 });
 
@@ -24,6 +45,9 @@ describe("extractSourceFromDirName", () => {
   it("extracts source from plugin directory name", () => {
     expect(extractSourceFromDirName("plugin-codex-watch")).toBe("codex");
     expect(extractSourceFromDirName("plugin-openclaw-watch")).toBe("openclaw");
+    expect(extractSourceFromDirName("plugin-opencode-watch")).toBe("opencode");
+    expect(extractSourceFromDirName("plugin-hermes-watch")).toBe("hermes");
+    expect(extractSourceFromDirName("plugin-pi-watch")).toBe("pi");
   });
 
   it("rejects non-matching directory names", () => {

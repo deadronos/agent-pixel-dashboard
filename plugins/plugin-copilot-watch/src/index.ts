@@ -13,11 +13,14 @@ import {
   getDefaultActivityScore,
   getStringValue,
   matchesSessionFile,
-  watchJsonlSessionFiles,
+  watchJsonlSessionFilesByPolling,
   type SessionSource
 } from "@agent-watch/plugin-sdk";
 
 const DEFAULT_PATHS = ["~/.copilot/session-state", "~/.copilot"];
+const DEFAULT_SCAN_INTERVAL_MS = 2000;
+const DEFAULT_MAX_DEPTH = 2;
+const DEFAULT_MAX_FILES = 5000;
 const SOURCE: SessionSource = "copilot";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
@@ -76,11 +79,17 @@ export class CopilotWatchPlugin implements CollectorPlugin {
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
     const activeWindowMs = Number(process.env.COPILOT_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
-    return watchJsonlSessionFiles(root, ctx, {
+    const scanIntervalMs = Number(process.env.COPILOT_SCAN_INTERVAL_MS ?? DEFAULT_SCAN_INTERVAL_MS);
+    const maxDepth = Number(process.env.COPILOT_SCAN_MAX_DEPTH ?? DEFAULT_MAX_DEPTH);
+    const maxFiles = Number(process.env.COPILOT_SCAN_MAX_FILES ?? DEFAULT_MAX_FILES);
+    return watchJsonlSessionFilesByPolling(root, ctx, {
       matchFile: MATCH_SESSION_FILE,
       activeWindowMs,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
-        parseCopilotRecord(root.host, filePath, record, sequence, fallbackTimestamp)
+        parseCopilotRecord(root.host, filePath, record, sequence, fallbackTimestamp),
+      scanIntervalMs: Number.isFinite(scanIntervalMs) ? scanIntervalMs : DEFAULT_SCAN_INTERVAL_MS,
+      maxDepth: Number.isFinite(maxDepth) ? maxDepth : DEFAULT_MAX_DEPTH,
+      maxFiles: Number.isFinite(maxFiles) ? maxFiles : DEFAULT_MAX_FILES
     });
   }
 }
