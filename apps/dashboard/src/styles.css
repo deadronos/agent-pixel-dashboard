@@ -63,13 +63,13 @@ body {
 .topbar {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  grid-template-columns: minmax(18rem, 1fr) auto minmax(13rem, 1fr);
+  align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
+  gap: 1.25rem;
+  padding: 0.85rem 1.1rem;
   border: 1px solid rgba(19, 32, 50, 0.08);
-  border-radius: 1.35rem;
+  border-radius: 1.1rem;
   background: var(--panel-bg);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
@@ -78,7 +78,7 @@ body {
 
 .topbar h1 {
   margin: 0;
-  font-size: clamp(1.75rem, 2.7vw, 2.8rem);
+  font-size: clamp(1.55rem, 2.25vw, 2.4rem);
   line-height: 0.95;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -90,7 +90,7 @@ body {
 
 .topbar__copy {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.3rem;
 }
 
 .topbar__lede {
@@ -101,17 +101,19 @@ body {
   color: var(--muted-text-color);
 }
 
-.topbar__meta {
+.topbar__actions {
   display: grid;
-  width: min(100%, 20rem);
   justify-items: end;
-  gap: 0.75rem;
+  gap: 0.45rem;
 }
 
 .topbar__stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(4, minmax(4.25rem, 1fr));
+  justify-self: center;
+  align-self: center;
+  gap: 0.45rem;
+  width: min(100%, 20rem);
 }
 
 .topbar__stat {
@@ -119,8 +121,8 @@ body {
   justify-items: center;
   gap: 0.1rem;
   min-width: 0;
-  padding: 0.55rem 0.7rem;
-  border-radius: 0.95rem;
+  padding: 0.42rem 0.55rem;
+  border-radius: 0.75rem;
   border: 1px solid rgba(19, 32, 50, 0.08);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.24));
   -webkit-backdrop-filter: blur(10px);
@@ -144,7 +146,7 @@ body {
 }
 
 .topbar__stat strong {
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   line-height: 1;
 }
 
@@ -189,7 +191,7 @@ body {
 
 .topbar__status {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.25rem;
   justify-items: end;
   text-align: right;
 }
@@ -205,8 +207,8 @@ body {
 .topbar__settings-toggle {
   justify-self: end;
   border: 1px solid rgba(19, 32, 50, 0.12);
-  border-radius: 0.9rem;
-  padding: 0.55rem 0.85rem;
+  border-radius: 0.75rem;
+  padding: 0.48rem 0.8rem;
   background: rgba(255, 255, 255, 0.52);
   color: var(--text-color);
   font: inherit;
@@ -1004,13 +1006,15 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .topbar__meta {
+  .topbar__actions {
     width: 100%;
     justify-items: start;
   }
 
   .topbar__stats {
+    justify-self: start;
     width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .topbar__status {

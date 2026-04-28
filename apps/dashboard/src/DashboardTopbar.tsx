@@ -41,12 +41,16 @@ export function DashboardTopbar({
   statusSummary,
   settingsPanelAvailable,
   settingsPanelOpen,
+  darkMode,
+  onToggleDarkMode,
   onToggleSettings
 }: {
   connectionState: ConnectionState;
   statusSummary: EntityStatusSummary;
   settingsPanelAvailable: boolean;
   settingsPanelOpen: boolean;
+  darkMode: boolean;
+  onToggleDarkMode: () => void;
   onToggleSettings: () => void;
 }) {
   const connectionLabel =
@@ -72,31 +76,41 @@ export function DashboardTopbar({
               : "Waiting for the first collector event."}
         </p>
       </div>
-      <div className="topbar__meta">
-        <div className="topbar__stats" aria-label="Conversation status summary">
-          <span className="topbar__stat topbar__stat--total">
-            <strong>{statusSummary.total}</strong>
-            <span>Total</span>
-          </span>
-          <span className="topbar__stat topbar__stat--active">
-            <strong>{statusSummary.active}</strong>
-            <span>Active</span>
-          </span>
-          <span className="topbar__stat topbar__stat--idle">
-            <strong>{statusSummary.idle}</strong>
-            <span>Idle</span>
-          </span>
-          <span className="topbar__stat topbar__stat--dormant">
-            <strong>{statusSummary.dormant}</strong>
-            <span>Dormant</span>
-          </span>
-        </div>
+      <div className="topbar__stats" aria-label="Conversation status summary">
+        <span className="topbar__stat topbar__stat--total">
+          <strong>{statusSummary.total}</strong>
+          <span>Total</span>
+        </span>
+        <span className="topbar__stat topbar__stat--active">
+          <strong>{statusSummary.active}</strong>
+          <span>Active</span>
+        </span>
+        <span className="topbar__stat topbar__stat--idle">
+          <strong>{statusSummary.idle}</strong>
+          <span>Idle</span>
+        </span>
+        <span className="topbar__stat topbar__stat--dormant">
+          <strong>{statusSummary.dormant}</strong>
+          <span>Dormant</span>
+        </span>
+      </div>
+      <div className="topbar__actions">
         <div className="topbar__status">
           <div className={`badge ${connectionTone}`} aria-live="polite">
             {connectionLabel}
           </div>
           <p className="topbar__status-copy">{connectionMessage}</p>
         </div>
+        <button
+          type="button"
+          className="topbar__icon-toggle"
+          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          aria-pressed={darkMode}
+          onClick={onToggleDarkMode}
+          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {darkMode ? "☀" : "☾"}
+        </button>
         {settingsPanelAvailable ? (
           <button
             type="button"
