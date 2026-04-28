@@ -95,22 +95,24 @@ export function DashboardTopbar({
         </span>
       </div>
       <div className="topbar__actions">
-        <div className="topbar__status">
-          <div className={`badge ${connectionTone}`} aria-live="polite">
-            {connectionLabel}
+        <div className="topbar__utility">
+          <div className="topbar__status">
+            <div className={`badge ${connectionTone}`} aria-live="polite">
+              {connectionLabel}
+            </div>
+            <p className="topbar__status-copy">{connectionMessage}</p>
           </div>
-          <p className="topbar__status-copy">{connectionMessage}</p>
+          <button
+            type="button"
+            className="topbar__icon-toggle"
+            aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+            aria-pressed={darkMode}
+            onClick={onToggleDarkMode}
+            title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {darkMode ? "☀" : "☾"}
+          </button>
         </div>
-        <button
-          type="button"
-          className="topbar__icon-toggle"
-          aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-          aria-pressed={darkMode}
-          onClick={onToggleDarkMode}
-          title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-        >
-          {darkMode ? "L" : "D"}
-        </button>
         {settingsPanelAvailable ? (
           <button
             type="button"

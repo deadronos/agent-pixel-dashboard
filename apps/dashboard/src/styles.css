@@ -107,6 +107,13 @@ body {
   gap: 0.45rem;
 }
 
+.topbar__utility {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.65rem;
+}
+
 .topbar__stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(4.25rem, 1fr));
@@ -224,14 +231,14 @@ body {
   justify-self: end;
   display: inline-grid;
   place-items: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.2rem;
+  height: 2.2rem;
   border: 1px solid rgba(19, 32, 50, 0.12);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.52);
   color: var(--text-color);
   font: inherit;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 8px 16px rgba(28, 50, 87, 0.06);
@@ -1040,6 +1047,10 @@ body {
   .topbar__actions {
     width: 100%;
     justify-items: start;
+  }
+
+  .topbar__utility {
+    grid-template-columns: auto auto;
   }
 
   .topbar__stats {
