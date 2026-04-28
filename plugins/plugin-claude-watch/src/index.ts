@@ -19,7 +19,7 @@ import {
   type SessionSource
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.claude/projects", "~/.claude"];
+const DEFAULT_PATHS = ["~/.claude/projects"];
 const SOURCE: SessionSource = "claude";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
@@ -110,6 +110,7 @@ export class ClaudeWatchPlugin implements CollectorPlugin {
     return watchJsonlSessionFiles(root, ctx, {
       matchFile: MATCH_SESSION_FILE,
       activeWindowMs,
+      depth: 3,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
         parseClaudeRecord(root.host, filePath, record, sequence, fallbackTimestamp)
     });

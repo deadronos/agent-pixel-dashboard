@@ -19,9 +19,9 @@ import {
 
 import { buildOpenClawSessionId, getOpenClawAgentId } from "./identity.js";
 
-const DEFAULT_PATHS = ["~/.openclaw/agents", "~/.openclaw"];
+const DEFAULT_PATHS = ["~/.openclaw/agents"];
 const DEFAULT_SCAN_INTERVAL_MS = 2000;
-const DEFAULT_MAX_DEPTH = 8;
+const DEFAULT_MAX_DEPTH = 4;
 const DEFAULT_MAX_FILES = 5000;
 const SOURCE: SessionSource = "openclaw";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);

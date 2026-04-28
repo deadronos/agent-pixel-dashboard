@@ -388,7 +388,16 @@ export async function watchJsonlSessionFiles<T extends NormalizedEvent>(
     persistent: true,
     ignoreInitial: false,
     depth: options.depth ?? DEFAULT_WATCH_DEPTH,
-    ignored: options.ignored ?? [/(^|[\/\\])\.git([\/\\]|$)/, /(^|[\/\\])node_modules([\/\\]|$)/, /(^|[\/\\])\.next([\/\\]|$)/, /(^|[\/\\])dist([\/\\]|$)/],
+    ignored: options.ignored ?? [
+      /(^|[\/\\])\.git([\/\\]|$)/,
+      /(^|[\/\\])node_modules([\/\\]|$)/,
+      /(^|[\/\\])\.next([\/\\]|$)/,
+      /(^|[\/\\])dist([\/\\]|$)/,
+      /(^|[\/\\])\.cache([\/\\]|$)/,
+      /(^|[\/\\])\.DS_Store([\/\\]|$)/,
+      /(^|[\/\\])\.venv([\/\\]|$)/,
+      /(^|[\/\\])__pycache__([\/\\]|$)/
+    ],
     awaitWriteFinish: {
       stabilityThreshold: DEFAULT_STABILITY_THRESHOLD_MS,
       pollInterval: DEFAULT_POLL_INTERVAL_MS
@@ -445,7 +454,16 @@ export async function watchJsonSessionFiles<T extends NormalizedEvent>(
     persistent: true,
     ignoreInitial: false,
     depth: options.depth ?? DEFAULT_WATCH_DEPTH,
-    ignored: options.ignored ?? [/(^|[\/\\])\.git([\/\\]|$)/, /(^|[\/\\])node_modules([\/\\]|$)/, /(^|[\/\\])\.next([\/\\]|$)/, /(^|[\/\\])dist([\/\\]|$)/],
+    ignored: options.ignored ?? [
+      /(^|[\/\\])\.git([\/\\]|$)/,
+      /(^|[\/\\])node_modules([\/\\]|$)/,
+      /(^|[\/\\])\.next([\/\\]|$)/,
+      /(^|[\/\\])dist([\/\\]|$)/,
+      /(^|[\/\\])\.cache([\/\\]|$)/,
+      /(^|[\/\\])\.DS_Store([\/\\]|$)/,
+      /(^|[\/\\])\.venv([\/\\]|$)/,
+      /(^|[\/\\])__pycache__([\/\\]|$)/
+    ],
     awaitWriteFinish: {
       stabilityThreshold: DEFAULT_STABILITY_THRESHOLD_MS,
       pollInterval: DEFAULT_POLL_INTERVAL_MS

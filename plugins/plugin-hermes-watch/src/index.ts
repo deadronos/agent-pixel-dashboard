@@ -14,7 +14,7 @@ import {
 } from "@agent-watch/plugin-sdk";
 
 const SOURCE: SessionSource = "hermes";
-const DEFAULT_PATHS = ["~/.hermes/sessions", "~/.hermes"];
+const DEFAULT_PATHS = ["~/.hermes/sessions"];
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -141,19 +141,29 @@ export class HermesWatchPlugin implements CollectorPlugin {
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
     const activeWindowMs = Number(process.env.HERMES_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
-    return root.path.endsWith("sessions")
-      ? watchJsonSessionFiles(root, ctx, {
-        matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.json'),
-        activeWindowMs,
-        parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
-          parseHermesRecord(root.host, filePath, record, sequence, fallbackTimestamp)
-      })
-      : watchJsonlSessionFiles(root, ctx, {
-        matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.jsonl'),
-        activeWindowMs,
-        parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
-          parseHermesRecord(root.host, filePath, record, sequence, fallbackTimestamp)
-      });
+    const depth = 2; // Hermes sessions are typically shallow
+
+    const jsonHandle = await watchJsonSessionFiles(root, ctx, {
+      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith(".json"),
+      activeWindowMs,
+      depth,
+      parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
+        parseHermesRecord(root.host, filePath, record, sequence, fallbackTimestamp)
+    });
+
+    const jsonlHandle = await watchJsonlSessionFiles(root, ctx, {
+      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith(".jsonl"),
+      activeWindowMs,
+      depth,
+      parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
+        parseHermesRecord(root.host, filePath, record, sequence, fallbackTimestamp)
+    });
+
+    return {
+      close: async () => {
+        await Promise.all([jsonHandle.close(), jsonlHandle.close()]);
+      }
+    };
   }
 }
 
