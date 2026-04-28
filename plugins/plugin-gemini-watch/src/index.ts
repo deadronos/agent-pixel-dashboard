@@ -101,13 +101,13 @@ export class GeminiWatchPlugin implements CollectorPlugin {
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
     const activeWindowMs = Number(process.env.GEMINI_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
     const jsonHandle = await watchJsonSessionFiles(root, ctx, {
-      matchFile: MATCH_SESSION_FILE,
+      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.json'),
       activeWindowMs,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
         parseGeminiSessionFile(root.host, filePath, record, sequence, fallbackTimestamp)
     });
     const jsonlHandle = await watchJsonlSessionFiles(root, ctx, {
-      matchFile: MATCH_SESSION_FILE,
+      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.jsonl'),
       activeWindowMs,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
         parseGeminiSessionFile(root.host, filePath, record, sequence, fallbackTimestamp)

@@ -135,9 +135,13 @@ export function parseOpenCodeDbEvent(sourceHost: string, row: OpenCodeDbSessionR
 
 async function queryDb(dbFile: string, sql: string, params: string[]): Promise<OpenCodeDbSessionRow[]> {
   try {
-    let renderedSql = sql;
-    for (const param of params) {
-      renderedSql = renderedSql.replace("?", `'${param.replace(/'/g, "''")}'`);
+    const parts = sql.split("?");
+    if (parts.length - 1 !== params.length) {
+      throw new Error("Parameter count mismatch");
+    }
+    let renderedSql = parts[0];
+    for (let i = 0; i < params.length; i++) {
+      renderedSql += `'${params[i].replace(/'/g, "''")}'` + parts[i + 1];
     }
     const { stdout } = await execFileAsync("sqlite3", ["-json", dbFile, renderedSql], { maxBuffer: 10 * 1024 * 1024 });
     return stdout.trim().length > 0 ? JSON.parse(stdout) as OpenCodeDbSessionRow[] : [];

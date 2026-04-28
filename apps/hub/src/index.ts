@@ -16,6 +16,7 @@ import { createStateHandler } from "./state-handler.js";
 import { attachWebSocketLifecycle } from "./ws-lifecycle.js";
 
 const app = express();
+app.set("trust proxy", 1);
 const corsOrigins = (process.env.HUB_CORS_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
 app.use(cors(getHubCorsOptions(corsOrigins)));
 app.use(express.json({ limit: "2mb" }));

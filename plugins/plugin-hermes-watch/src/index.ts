@@ -143,13 +143,13 @@ export class HermesWatchPlugin implements CollectorPlugin {
     const activeWindowMs = Number(process.env.HERMES_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
     return root.path.endsWith("sessions")
       ? watchJsonSessionFiles(root, ctx, {
-        matchFile: MATCH_SESSION_FILE,
+        matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.json'),
         activeWindowMs,
         parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
           parseHermesRecord(root.host, filePath, record, sequence, fallbackTimestamp)
       })
       : watchJsonlSessionFiles(root, ctx, {
-        matchFile: MATCH_SESSION_FILE,
+        matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.jsonl'),
         activeWindowMs,
         parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
           parseHermesRecord(root.host, filePath, record, sequence, fallbackTimestamp)

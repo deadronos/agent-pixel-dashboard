@@ -52,6 +52,10 @@ export function buildSizedBatches(events: NormalizedEvent[], options: BuildBatch
 
   const bodies: string[] = [];
   let current: NormalizedEvent[] = [];
+  let currentBytes = 0;
+
+  const baseBody = serialize({ collectorId: options.collectorId, events: [] });
+  const baseBytes = byteSize(baseBody);
 
   const flushCurrent = (): void => {
     if (current.length === 0) {
@@ -59,21 +63,25 @@ export function buildSizedBatches(events: NormalizedEvent[], options: BuildBatch
     }
     bodies.push(serialize({ collectorId: options.collectorId, events: current }));
     current = [];
+    currentBytes = 0;
   };
 
   for (const event of events) {
-    const candidate = [...current, event];
-    const candidateBody = serialize({ collectorId: options.collectorId, events: candidate });
-    if (byteSize(candidateBody) <= options.maxBytes) {
-      current = candidate;
+    const eventBody = JSON.stringify(event);
+    const eventBytes = byteSize(eventBody);
+    const additionalBytes = current.length === 0 ? eventBytes : eventBytes + 1; // +1 for comma
+
+    if (baseBytes + currentBytes + additionalBytes <= options.maxBytes) {
+      current.push(event);
+      currentBytes += additionalBytes;
       continue;
     }
 
     flushCurrent();
 
-    const singleBody = serialize({ collectorId: options.collectorId, events: [event] });
-    if (byteSize(singleBody) <= options.maxBytes) {
-      current = [event];
+    if (baseBytes + eventBytes <= options.maxBytes) {
+      current.push(event);
+      currentBytes = eventBytes;
       continue;
     }
 

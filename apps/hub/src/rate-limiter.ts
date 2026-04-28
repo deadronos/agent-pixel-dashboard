@@ -9,7 +9,7 @@ export function createRateLimiter(options: RateLimiterOptions) {
   const store = new Map<string, { count: number; windowEnd: number }>();
 
   const middleware = function eventsRateLimiter(req: Request, res: Response, next: NextFunction): void {
-    const rawIp = req.ip ?? (req.headers["x-forwarded-for"] as string | undefined) ?? "";
+    const rawIp = req.ip ?? "";
     const key = rawIp.toString().split(",")[0].trim() || "unknown";
     const now = Date.now();
     const entry = store.get(key);
