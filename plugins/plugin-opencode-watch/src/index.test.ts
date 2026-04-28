@@ -48,7 +48,10 @@ describe("parseOpenCodeDbEvent", () => {
         title: "Live OpenCode",
         time_updated: 1_800_000_000_000,
         modelID: "kimi-k2.6",
-        providerID: "moonshotai"
+        providerID: "moonshotai",
+        lastMessage: "Tests are green",
+        lastTool: "bash",
+        lastToolInput: "npm test"
       },
       2
     );
@@ -58,13 +61,14 @@ describe("parseOpenCodeDbEvent", () => {
       entityId: "opencode:session:ses_live",
       sessionId: "ses_live",
       eventType: "session_update",
-      summary: "Live OpenCode",
-      detail: "/workspace/live"
+      summary: "Tests are green",
+      detail: "npm test"
     });
     expect(event.meta).toMatchObject({
       filePath: "opencode-db:ses_live",
       groupKey: "/workspace/live",
-      model: "moonshotai/kimi-k2.6"
+      model: "moonshotai/kimi-k2.6",
+      toolName: "bash"
     });
   });
 });

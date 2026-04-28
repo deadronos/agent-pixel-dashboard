@@ -57,8 +57,8 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `HUB_PORT` (default: `3030`)
 - `HUB_AUTH_TOKEN` (required; must match the collector token)
 - `CASS_BIN` (default: `cass`)
-- `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; leave blank for
-  permissive development, or set an allowlist in deployment)
+- `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; blank is
+  permissive during development and rejects cross-origin requests in `NODE_ENV=production`)
 
 ### Collector
 
@@ -70,7 +70,7 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `MAX_BATCH_BYTES` (default: `1500000`, keep below hub JSON body limit)
 - `WATCH_SOURCES` (default: `auto`; use `auto|all` or comma-separated sources)
 - `PLUGINS_DIR` (optional; defaults to repo `plugins/` directory for autodiscovery)
-- `SESSION_ROOTS` (optional comma-separated global override for all source watchers; falls back to `CODEX_SESSION_ROOTS` for compatibility)
+- `SESSION_ROOTS` (optional comma-separated global roots used in addition to source-specific roots)
 - `CODEX_SESSION_ROOTS` (optional comma-separated session roots)
 - `CLAUDE_SESSION_ROOTS` (optional comma-separated session roots)
 - `GEMINI_SESSION_ROOTS` (optional comma-separated session roots)
@@ -107,6 +107,7 @@ Hub endpoint:
 Behavior:
 
 - uses `cass search ... --robot --fields minimal`
+- rejects blank, oversized, or control-character queries before invoking CASS
 - returns `503` if CASS is unavailable (`cass health --json` fails)
 
 This keeps search pluggable while letting collectors stay watcher-first.

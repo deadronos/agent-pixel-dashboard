@@ -109,4 +109,14 @@ describe('resolveLiveStatus', () => {
   it('recomputes nonterminal statuses from the latest timestamp', () => {
     expect(resolveLiveStatus('idle', new Date().toISOString())).toBe('active');
   });
+
+  it('keeps high-activity entities active during the idle window', () => {
+    expect(
+      resolveLiveStatus(
+        'idle',
+        new Date(Date.now() - 20_000).toISOString(),
+        0.9
+      )
+    ).toBe('active');
+  });
 });

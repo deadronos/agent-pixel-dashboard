@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { collectJsonlFiles } from "./watch-helpers.js";
+import { collectJsonlFiles, discoverSessionRoots } from "./watch-helpers.js";
 
 const createdDirs: string[] = [];
 
@@ -46,5 +46,29 @@ describe("collectJsonlFiles", () => {
 
     const files = await collectJsonlFiles(root, { maxDepth: 5, maxFiles: 2 });
     expect(files).toHaveLength(2);
+  });
+});
+
+describe("discoverSessionRoots", () => {
+  it("merges globally configured roots with source-specific roots", async () => {
+    const globalRoot = await makeTempDir();
+    const sourceRoot = await makeTempDir();
+
+    const roots = await discoverSessionRoots(
+      {
+        env: {
+          CODEX_SESSION_ROOTS: sourceRoot,
+        },
+        configuredRoots: [globalRoot],
+        host: "test-host",
+      },
+      {
+        envVar: "CODEX_SESSION_ROOTS",
+        defaultRoots: [],
+        idPrefix: "codex-root",
+      },
+    );
+
+    expect(roots.map((root) => root.path).sort()).toEqual([globalRoot, sourceRoot].sort());
   });
 });

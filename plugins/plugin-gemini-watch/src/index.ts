@@ -11,8 +11,10 @@ import {
   createNormalizedSessionParser,
   discoverSessionRoots,
   getDefaultActivityScore,
+  getFirstTextContent,
   getStringValue,
   matchesSessionFile,
+  summarizeToolInput,
   watchJsonlSessionFiles,
   watchJsonSessionFiles,
   type SessionSource
@@ -28,21 +30,6 @@ function getMessages(record: Record<string, unknown>): Array<Record<string, unkn
 
 function getLastMessage(record: Record<string, unknown>): Record<string, unknown> {
   return getMessages(record).at(-1) ?? record;
-}
-
-function getTextContent(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-  if (!Array.isArray(value)) {
-    return "";
-  }
-  for (const entry of value) {
-    if (entry && typeof entry === "object" && "text" in entry && typeof entry.text === "string") {
-      return entry.text;
-    }
-  }
-  return "";
 }
 
 function getGeminiSessionId(filePath: string): string {
@@ -78,10 +65,14 @@ export const parseGeminiSessionFile = createNormalizedSessionParser({
   getEventType: ({ record }) => getStringValue(getLastMessage(record).type) || "message",
   getStatus: ({ record }) => getStringValue(record.status) || "active",
   getSummary: ({ record }) =>
-    getTextContent(getLastMessage(record).content) ||
+    getFirstTextContent(getLastMessage(record).content) ||
+    getStringValue(getFirstToolCallDetail(record)?.name) ||
     getStringValue(record.summary) ||
     "Gemini activity",
-  getDetail: ({ filePath, record }) => getProjectKey(filePath, record),
+  getDetail: ({ filePath, record }) =>
+    summarizeToolInput(getFirstToolCallDetail(record)?.args) ||
+    summarizeToolInput(getFirstToolCallDetail(record)?.arguments) ||
+    getProjectKey(filePath, record),
   getActivityScore: ({ eventType, record }) => getDefaultActivityScore(eventType, record.activityScore),
   getMeta: ({ filePath, record }) => ({
     filePath,

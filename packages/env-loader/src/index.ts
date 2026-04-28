@@ -21,11 +21,18 @@ function parseEnvFile(filePath: string): void {
 
     const key = match[1];
     let value = match[2].trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
+    const isDoubleQuoted = value.startsWith('"') && value.endsWith('"');
+    const isSingleQuoted = value.startsWith("'") && value.endsWith("'");
+    if (isDoubleQuoted || isSingleQuoted) {
       value = value.slice(1, -1);
+      if (isDoubleQuoted) {
+        value = value
+          .replace(/\\n/g, "\n")
+          .replace(/\\r/g, "\r")
+          .replace(/\\t/g, "\t")
+          .replace(/\\"/g, '"')
+          .replace(/\\\\/g, "\\");
+      }
     }
 
     if (process.env[key] === undefined) {

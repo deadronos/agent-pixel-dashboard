@@ -1,5 +1,6 @@
 import {
   getStatusFromTimestamp as getSharedStatusFromTimestamp,
+  LIVE_STATUS_WINDOWS_MS,
   resolveEntityStatus,
   type EntityStatus
 } from "@agent-watch/event-schema";
@@ -178,6 +179,20 @@ export function getStatusFromTimestamp(timestamp: string): EntityStatus {
   return getSharedStatusFromTimestamp(timestamp);
 }
 
-export function resolveLiveStatus(currentStatus: EntityStatus | undefined, lastEventAt: string): EntityStatus {
-  return resolveEntityStatus(currentStatus, lastEventAt);
+export function resolveLiveStatus(
+  currentStatus: EntityStatus | undefined,
+  lastEventAt: string,
+  activityScore = 0.5,
+  now = new Date()
+): EntityStatus {
+  if (currentStatus === "done" || currentStatus === "error") {
+    return currentStatus;
+  }
+
+  const ageMs = now.getTime() - new Date(lastEventAt).getTime();
+  if (activityScore >= 0.8 && ageMs <= LIVE_STATUS_WINDOWS_MS.idle) {
+    return "active";
+  }
+
+  return resolveEntityStatus(currentStatus, lastEventAt, now, activityScore);
 }

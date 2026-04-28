@@ -1,8 +1,8 @@
 import type { NormalizedEvent } from "@agent-watch/event-schema";
 import { describe, expect, it } from "vitest";
 
-import { createRecentEventsHandler } from "./recent-events-handler.js";
 import { HubStore } from "./hub-store.js";
+import { createRecentEventsHandler } from "./recent-events-handler.js";
 
 interface RecentEventsBody {
   events: NormalizedEvent[];

@@ -10,8 +10,10 @@ import type {
 import {
   createNormalizedSessionParser,
   discoverSessionRoots,
+  getFirstTextContent,
   getDefaultActivityScore,
   getStringValue,
+  getToolCall,
   matchesSessionFile,
   watchJsonlSessionFiles,
   type SessionSource
@@ -25,6 +27,36 @@ function getPayload(record: Record<string, unknown>): Record<string, unknown> | 
   return record.payload && typeof record.payload === "object" ? (record.payload as Record<string, unknown>) : undefined;
 }
 
+function getCodexPayload(record: Record<string, unknown>): Record<string, unknown> {
+  return getPayload(record) ?? record;
+}
+
+function getCodexEventType(record: Record<string, unknown>): string {
+  const payload = getCodexPayload(record);
+  return getStringValue(record.event_type) ||
+    getStringValue(payload.type) ||
+    getStringValue(record.type) ||
+    "message";
+}
+
+function getCodexTool(record: Record<string, unknown>) {
+  return getToolCall(getCodexPayload(record));
+}
+
+function getCodexRole(record: Record<string, unknown>): string | undefined {
+  const role = getStringValue(getCodexPayload(record).role);
+  return role || undefined;
+}
+
+function getCodexText(record: Record<string, unknown>): string {
+  const payload = getCodexPayload(record);
+  return getFirstTextContent(payload.content) ||
+    getStringValue(payload.text) ||
+    getStringValue(record.message) ||
+    getStringValue(record.text) ||
+    getStringValue(record.content);
+}
+
 export const parseCodexRecord = createNormalizedSessionParser({
   source: "codex",
   defaultDisplayName: "Codex",
@@ -32,37 +64,34 @@ export const parseCodexRecord = createNormalizedSessionParser({
   getSessionId: ({ filePath, record }) =>
     getStringValue(record.session_id) ||
     getStringValue(record.sessionId) ||
-    getStringValue(getPayload(record)?.id) ||
+    getStringValue(getCodexPayload(record).id) ||
     path.basename(filePath).replace(/^rollout-/, "").replace(/\.jsonl$/, ""),
   getTimestamp: ({ record, fallbackTimestamp }) =>
     getStringValue(record.timestamp) ||
     getStringValue(record.created_at) ||
     fallbackTimestamp,
-  getEventType: ({ record }) =>
-    getStringValue(record.event_type) ||
-    getStringValue(record.type) ||
-    getStringValue(getPayload(record)?.type) ||
-    "message",
+  getEventType: ({ record }) => getCodexEventType(record),
   getStatus: ({ record }) => getStringValue(record.status) || "active",
   getSummary: ({ record }) =>
-    getStringValue(getPayload(record)?.name) ||
-    getStringValue(getPayload(record)?.command) ||
+    getCodexTool(record)?.name ||
+    getCodexText(record) ||
     getStringValue(record.summary) ||
-    getStringValue(record.message) ||
-    getStringValue(record.text),
+    "Codex activity",
   getDetail: ({ record }) =>
-    getStringValue(getPayload(record)?.arguments) ||
+    getCodexTool(record)?.detail ||
+    getCodexRole(record) ||
     getStringValue(record.detail) ||
-    getStringValue(record.content),
+    undefined,
   getActivityScore: ({ eventType, record }) => getDefaultActivityScore(eventType, record.activityScore),
   getMeta: ({ filePath, record }) => ({
     filePath,
-    toolName:
-      getStringValue(getPayload(record)?.name) ||
+    toolName: getCodexTool(record)?.name ||
       getStringValue(record.toolName) ||
-      getStringValue(record.tool_name),
+      getStringValue(record.tool_name) ||
+      undefined,
+    role: getCodexRole(record),
     rawType: getStringValue(record.type),
-    model: getStringValue(getPayload(record)?.model) || undefined
+    model: getStringValue(getCodexPayload(record).model) || undefined
   })
 });
 

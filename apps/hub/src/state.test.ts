@@ -1,7 +1,7 @@
 import type { NormalizedEvent } from '@agent-watch/event-schema';
 import { describe, expect, it } from 'vitest';
 
-import { applyEvent, computeStatus, type EntityState } from './state.js';
+import { applyEvent, computeStatus, expireEntities, type EntityState } from './state.js';
 
 function sampleEvent(overrides: Partial<NormalizedEvent> = {}): NormalizedEvent {
   return {
@@ -40,5 +40,27 @@ describe('state projection', () => {
     expect(computeStatus(base, new Date('2026-04-09T20:15:50.000Z'))).toBe('idle');
     expect(computeStatus(base, new Date('2026-04-09T20:16:45.000Z'))).toBe('sleepy');
     expect(computeStatus(base, new Date('2026-04-09T20:18:00.000Z'))).toBe('dormant');
+  });
+
+  it('expires entities globally even when they never reached a terminal status', () => {
+    const staleActive = applyEvent(undefined, sampleEvent({
+      entityId: 'codex:session:stale-active',
+      timestamp: '2026-04-07T20:15:31.000Z',
+      status: 'active',
+    }));
+    const freshDone = applyEvent(undefined, sampleEvent({
+      entityId: 'codex:session:fresh-done',
+      timestamp: '2026-04-09T20:00:00.000Z',
+      eventType: 'session_finished',
+    }));
+    const entities = new Map<string, EntityState>([
+      [staleActive.entityId, staleActive],
+      [freshDone.entityId, freshDone],
+    ]);
+
+    expireEntities(entities, new Date('2026-04-09T20:15:31.000Z'));
+
+    expect(entities.has(staleActive.entityId)).toBe(false);
+    expect(entities.has(freshDone.entityId)).toBe(true);
   });
 });

@@ -91,6 +91,10 @@ function splitCsv(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function uniqueValues(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
 async function getFileStat(filePath: string): Promise<FileStatLike> {
   const stat = await fs.stat(filePath);
   return {
@@ -207,8 +211,11 @@ export async function discoverSessionRoots(
   }
 ): Promise<DiscoveredSessionRoot[]> {
   const envRoots = splitCsv(config.env[options.envVar]);
-  const configuredRoots =
-    config.configuredRoots.length > 0 ? config.configuredRoots : [...envRoots, ...options.defaultRoots];
+  const configuredRoots = uniqueValues(
+    config.configuredRoots.length > 0 || envRoots.length > 0
+      ? [...config.configuredRoots, ...envRoots]
+      : options.defaultRoots
+  );
   const expandedRoots = configuredRoots.map(expandHomePath);
   const discovered: DiscoveredSessionRoot[] = [];
 

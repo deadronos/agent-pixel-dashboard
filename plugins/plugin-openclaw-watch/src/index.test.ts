@@ -42,13 +42,44 @@ describe("openclaw identity helpers", () => {
       sessionId: "openclaw:researcher:abc123",
       displayName: "researcher",
       eventType: "tool_call",
-      summary: "assistant",
+      summary: "shell",
       detail: "opus"
     });
     expect(event.meta).toMatchObject({
       agentId: "researcher",
       groupKey: "researcher",
       toolName: "shell"
+    });
+  });
+
+  it("extracts OpenClaw assistant text and tool_use content", () => {
+    const event = parseOpenClawRecord(
+      "workstation",
+      "/Users/test/.openclaw/agents/researcher/sessions/abc123.jsonl",
+      {
+        type: "message",
+        message: {
+          role: "assistant",
+          model: "gpt-5.4",
+          content: [
+            { type: "tool_use", name: "Shell", input: { command: "git status --short" } },
+            { type: "text", text: "Status is clean." }
+          ]
+        }
+      },
+      2,
+      "2026-04-09T20:15:31.000Z"
+    );
+
+    expect(event).toMatchObject({
+      eventType: "tool_use",
+      summary: "Shell",
+      detail: "git status --short"
+    });
+    expect(event.meta).toMatchObject({
+      model: "gpt-5.4",
+      role: "assistant",
+      toolName: "Shell"
     });
   });
 });

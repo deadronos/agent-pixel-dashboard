@@ -1,21 +1,19 @@
 import "./env.js";
 import http from "node:http";
 
-import {
-  type HubHelloMessage
-} from "@agent-watch/event-schema";
 import cors from "cors";
 import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 
 import { createBatchHandler } from "./batch-handler.js";
-import { CassSearchClient } from "./cass-search.js";
+import { CassSearchClient, sanitizeCassQuery } from "./cass-search.js";
 import { createConversationDetailHandler } from "./conversation-detail.js";
 import { getHubCorsOptions } from "./cors.js";
 import { HubStore } from "./hub-store.js";
-import { createRecentEventsHandler } from "./recent-events-handler.js";
 import { createRateLimiter } from "./rate-limiter.js";
+import { createRecentEventsHandler } from "./recent-events-handler.js";
 import { createStateHandler } from "./state-handler.js";
+import { attachWebSocketLifecycle } from "./ws-lifecycle.js";
 
 const app = express();
 const corsOrigins = (process.env.HUB_CORS_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean);
@@ -49,6 +47,7 @@ setInterval(() => {
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: "/ws" });
+attachWebSocketLifecycle(wss, { getEntityCount: () => store.entityCount });
 
 function broadcast(payload: unknown): void {
   const encoded = JSON.stringify(payload);
@@ -81,7 +80,16 @@ app.get(
 );
 
 app.get("/api/search/sessions", async (req, res) => {
-  const query = String(req.query.q ?? "").trim();
+  let query: string;
+  try {
+    query = sanitizeCassQuery(String(req.query.q ?? ""));
+  } catch (error) {
+    res.status(400).json({
+      error: "invalid_q",
+      message: error instanceof Error ? error.message : "invalid search query"
+    });
+    return;
+  }
   const limit = Number(req.query.limit ?? 10);
   if (!query) {
     res.status(400).json({ error: "missing q" });
@@ -108,11 +116,6 @@ app.get("/api/search/sessions", async (req, res) => {
       message: error instanceof Error ? error.message : "unknown error"
     });
   }
-});
-
-wss.on("connection", (socket) => {
-  const payload: HubHelloMessage = { type: "hello", entities: store.entityCount };
-  socket.send(JSON.stringify(payload));
 });
 
 const port = Number(process.env.HUB_PORT ?? 3030);

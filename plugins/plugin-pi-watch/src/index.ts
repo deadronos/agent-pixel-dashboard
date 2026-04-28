@@ -4,6 +4,8 @@ import type { CollectorPlugin, DiscoveredSessionRoot, PluginContext, WatchContex
 import {
   buildNormalizedSessionEvent,
   discoverSessionRoots,
+  getFirstTextContent,
+  getFirstToolCallFromContent,
   getStringValue,
   matchesSessionFile,
   watchJsonlSessionFiles,
@@ -16,10 +18,6 @@ const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOU
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
-}
-
-function asArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
 }
 
 function projectDirToPath(projectDir: string): string | undefined {
@@ -45,40 +43,8 @@ function getProject(filePath: string, record: Record<string, unknown>): string |
   return projectDirToPath(path.basename(path.dirname(filePath)));
 }
 
-function textFromContent(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
-  }
-  for (const part of asArray(value)) {
-    const record = asRecord(part);
-    const text = getStringValue(record?.text);
-    if (text) {
-      return text.trim();
-    }
-  }
-  return "";
-}
-
 function toolFromContent(value: unknown): { name?: string; detail?: string } {
-  for (const part of asArray(value)) {
-    const record = asRecord(part);
-    const type = getStringValue(record?.type);
-    const name = getStringValue(record?.name);
-    if (type !== "toolCall" && !name) {
-      continue;
-    }
-    const args = record?.arguments;
-    let detail = "";
-    if (typeof args === "string") {
-      detail = args;
-    } else if (asRecord(args)?.command) {
-      detail = String(asRecord(args)?.command);
-    } else if (args !== undefined) {
-      detail = JSON.stringify(args);
-    }
-    return { name: name || "toolCall", detail };
-  }
-  return {};
+  return getFirstToolCallFromContent(value) ?? {};
 }
 
 function modelName(message: Record<string, unknown>): string | undefined {
@@ -112,7 +78,7 @@ export function parsePiRecord(
     displayName: "Pi",
     timestamp: getStringValue(record.timestamp) || fallbackTimestamp,
     eventType: getStringValue(record.type) || "message",
-    summary: textFromContent(content) || getStringValue(record.summary) || "Pi activity",
+    summary: getFirstTextContent(content) || getStringValue(record.summary) || tool.name || "Pi activity",
     defaultSummary: "Pi activity",
     detail: tool.detail || project,
     activityScore: tool.name ? 0.85 : 0.65,

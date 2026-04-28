@@ -815,6 +815,7 @@ body {
   border-radius: 1.45rem;
   border: 1px solid rgba(19, 32, 50, 0.1);
   background: var(--drawer-bg, var(--panel-bg));
+  color: var(--drawer-text, var(--text-color));
   box-shadow:
     0 30px 60px rgba(16, 26, 42, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -853,12 +854,12 @@ body {
   font-size: 0.72rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--muted-text-color);
+  color: var(--drawer-muted-text, var(--muted-text-color));
 }
 
 .conversation-drawer__identity {
   margin: 0.45rem 0 0;
-  color: var(--muted-text-color);
+  color: var(--drawer-muted-text, var(--muted-text-color));
   font-size: 0.82rem;
 }
 
@@ -867,7 +868,7 @@ body {
   border-radius: 999px;
   padding: 0.45rem 0.75rem;
   background: rgba(255, 255, 255, 0.42);
-  color: var(--text-color);
+  color: var(--drawer-text, var(--text-color));
   font: inherit;
   font-size: 0.78rem;
   font-weight: 700;
@@ -900,7 +901,7 @@ body {
 .conversation-drawer__event {
   border-radius: 0.95rem;
   border: 1px solid rgba(19, 32, 50, 0.08);
-  background: rgba(255, 255, 255, 0.42);
+  background: var(--drawer-card-bg, rgba(255, 255, 255, 0.42));
 }
 
 .conversation-drawer__summary-grid div {
@@ -914,13 +915,14 @@ body {
 .conversation-drawer__source,
 .conversation-drawer__event-detail,
 .conversation-drawer__state {
-  color: var(--muted-text-color);
+  color: var(--drawer-muted-text, var(--muted-text-color));
   font-size: 0.8rem;
 }
 
 .conversation-drawer__summary-grid strong,
 .conversation-drawer__item strong,
 .conversation-drawer__event strong {
+  color: var(--drawer-text, var(--text-color));
   font-size: 0.92rem;
 }
 
@@ -949,7 +951,7 @@ body {
 }
 
 .conversation-drawer__section-heading span {
-  color: var(--muted-text-color);
+  color: var(--drawer-muted-text, var(--muted-text-color));
   font-size: 0.8rem;
   font-weight: 700;
 }
@@ -979,7 +981,7 @@ body {
 
 .conversation-drawer__item time,
 .conversation-drawer__event time {
-  color: var(--muted-text-color);
+  color: var(--drawer-muted-text, var(--muted-text-color));
   font-size: 0.78rem;
   white-space: nowrap;
 }

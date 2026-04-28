@@ -1,6 +1,5 @@
 import http from "node:http";
 
-import { type HubHelloMessage } from "@agent-watch/event-schema";
 import cors from "cors";
 import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
@@ -8,20 +7,23 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createBatchHandler } from "./batch-handler.js";
 import { getHubCorsOptions } from "./cors.js";
 import { HubStore } from "./hub-store.js";
-import { createRecentEventsHandler } from "./recent-events-handler.js";
 import { createRateLimiter } from "./rate-limiter.js";
+import { createRecentEventsHandler } from "./recent-events-handler.js";
 import { createStateHandler } from "./state-handler.js";
+import { attachWebSocketLifecycle } from "./ws-lifecycle.js";
 
 export interface StartTestHubOptions {
   authToken?: string;
   rateLimiterMax?: number;
   rateLimiterWindowMs?: number;
+  heartbeatIntervalMs?: number;
 }
 
 export async function startTestHub(options: StartTestHubOptions = {}): Promise<{
   baseUrl: string;
   port: number;
   store: HubStore;
+  getWebSocketClients: () => Set<WebSocket>;
   close: () => Promise<void>;
 }> {
   const authToken = options.authToken ?? "test-token";
@@ -46,6 +48,10 @@ export async function startTestHub(options: StartTestHubOptions = {}): Promise<{
 
   const server = http.createServer(app);
   const wss = new WebSocketServer({ server, path: "/ws" });
+  const cleanupWebSocketLifecycle = attachWebSocketLifecycle(wss, {
+    getEntityCount: () => store.entityCount,
+    heartbeatIntervalMs: options.heartbeatIntervalMs,
+  });
 
   function broadcast(payload: unknown): void {
     const encoded = JSON.stringify(payload);
@@ -71,11 +77,6 @@ export async function startTestHub(options: StartTestHubOptions = {}): Promise<{
   app.get("/api/state", createStateHandler(store));
   app.get("/api/events/recent", createRecentEventsHandler({ authToken, store }));
 
-  wss.on("connection", (socket) => {
-    const payload: HubHelloMessage = { type: "hello", entities: store.entityCount };
-    socket.send(JSON.stringify(payload));
-  });
-
   await new Promise<void>((resolve) => {
     server.listen(0, () => resolve());
   });
@@ -89,6 +90,7 @@ export async function startTestHub(options: StartTestHubOptions = {}): Promise<{
 
   function close(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
+      cleanupWebSocketLifecycle();
       wss.close(() => {
         server.close((err) => {
           if (err) reject(err);
@@ -106,5 +108,5 @@ export async function startTestHub(options: StartTestHubOptions = {}): Promise<{
     });
   }
 
-  return { baseUrl, port, store, close };
+  return { baseUrl, port, store, getWebSocketClients: () => wss.clients, close };
 }

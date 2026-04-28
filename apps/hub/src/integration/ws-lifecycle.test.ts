@@ -8,11 +8,13 @@ describe("WebSocket lifecycle", () => {
   const authToken = "test-token";
   let close: () => Promise<void>;
   let baseUrl: string;
+  let getWebSocketClients: () => Set<WebSocket>;
 
   beforeEach(async () => {
-    const hub = await startTestHub({ authToken });
+    const hub = await startTestHub({ authToken, heartbeatIntervalMs: 25 });
     close = hub.close;
     baseUrl = hub.baseUrl;
+    getWebSocketClients = hub.getWebSocketClients;
   });
 
   afterEach(async () => {
@@ -209,5 +211,19 @@ describe("WebSocket lifecycle", () => {
     expect(hello).toMatchObject({ type: "hello", entities: 1 });
 
     ws2.close();
+  });
+
+  it("5. Heartbeat terminates clients that stop answering pings", async () => {
+    const ws = new WebSocket(`${baseUrl}/ws`);
+    await new Promise<void>((resolve, reject) => {
+      ws.on("open", resolve);
+      ws.on("error", reject);
+    });
+    const [serverClient] = Array.from(getWebSocketClients()) as Array<WebSocket & { isAlive?: boolean }>;
+    serverClient.isAlive = false;
+
+    await new Promise((resolve) => setTimeout(resolve, 35));
+
+    expect(getWebSocketClients().size).toBe(0);
   });
 });

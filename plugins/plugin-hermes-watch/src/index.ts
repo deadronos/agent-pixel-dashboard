@@ -4,6 +4,8 @@ import type { CollectorPlugin, DiscoveredSessionRoot, PluginContext, WatchContex
 import {
   buildNormalizedSessionEvent,
   discoverSessionRoots,
+  getFirstTextContent,
+  getToolCall,
   getStringValue,
   matchesSessionFile,
   watchJsonSessionFiles,
@@ -55,46 +57,38 @@ function projectName(record: Record<string, unknown>): string | undefined {
 }
 
 function textFromContent(value: unknown): string {
-  if (typeof value === "string") {
-    return value.trim();
-  }
-  for (const part of asArray(value)) {
-    const partRecord = asRecord(part);
-    const text = getStringValue(partRecord?.text);
-    if (text) {
-      return text.trim();
-    }
-  }
-  return "";
+  return getFirstTextContent(value);
 }
 
-function toolName(record: Record<string, unknown>): string | undefined {
+function toolSummary(record: Record<string, unknown>): { name?: string; detail?: string } {
   for (const call of asArray(record.tool_calls)) {
-    const callRecord = asRecord(call);
-    const fn = asRecord(callRecord?.function);
-    const name = getStringValue(fn?.name) || getStringValue(callRecord?.name);
-    if (name) {
-      return name;
+    const tool = getToolCall(call);
+    if (tool) {
+      return tool;
     }
   }
-  return getStringValue(record.name) || getStringValue(record.tool) || getStringValue(record.tool_name) || undefined;
+  const tool = getToolCall(record);
+  return tool ?? {};
 }
 
-function latestMessage(record: Record<string, unknown>): { text?: string; tool?: string } {
+function latestMessage(record: Record<string, unknown>): { text?: string; tool?: string; toolDetail?: string } {
   let text = "";
   let tool: string | undefined;
+  let toolDetail: string | undefined;
   for (const entry of asArray(record.messages)) {
     const entryRecord = asRecord(entry);
     if (!entryRecord) {
       continue;
     }
-    tool = toolName(entryRecord) || tool;
+    const nextTool = toolSummary(entryRecord);
+    tool = nextTool.name || tool;
+    toolDetail = nextTool.detail || toolDetail;
     const role = getStringValue(entryRecord.role) || getStringValue(entryRecord.type);
     if (role !== "tool" && role !== "tool_call") {
       text = textFromContent(entryRecord.content) || getStringValue(entryRecord.text) || text;
     }
   }
-  return { text: text || undefined, tool };
+  return { text: text || undefined, tool, toolDetail };
 }
 
 export function parseHermesRecord(
@@ -121,7 +115,7 @@ export function parseHermesRecord(
     eventType: getStringValue(record.type) || "session_update",
     summary: latest.text || getStringValue(record.summary) || "Hermes activity",
     defaultSummary: "Hermes activity",
-    detail: project,
+    detail: latest.toolDetail || project,
     activityScore: latest.tool ? 0.85 : 0.65,
     sequence,
     meta: {

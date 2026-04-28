@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import { getEmptyStateMessage, getEntityStatusSummary } from "./dashboard-summary.js";
 import type { GroupedDashboardEntity } from "./dashboard-view-types.js";
 
