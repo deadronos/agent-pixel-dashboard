@@ -21,7 +21,10 @@ export function matchesSessionFile(source: SessionSource, filePath: string): boo
     case "claude":
       return normalized.includes("/.claude/projects/") && base.endsWith(".jsonl");
     case "gemini":
-      return normalized.includes("/.gemini/tmp/") && normalized.includes("/chats/") && base.startsWith("session-") && base.endsWith(".json");
+      return normalized.includes("/.gemini/tmp/") &&
+        normalized.includes("/chats/") &&
+        base.startsWith("session-") &&
+        (base.endsWith(".json") || base.endsWith(".jsonl"));
     case "openclaw":
       return normalized.includes("/.openclaw/agents/") && normalized.includes("/sessions/") && base.endsWith(".jsonl");
     case "copilot":

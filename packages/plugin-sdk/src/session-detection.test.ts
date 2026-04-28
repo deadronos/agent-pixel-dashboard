@@ -14,6 +14,9 @@ describe('matchesSessionFile', () => {
     expect(
       matchesSessionFile('gemini', '/Users/test/.gemini/tmp/hash/chats/session-abc.json')
     ).toBe(true);
+    expect(
+      matchesSessionFile('gemini', '/Users/test/.gemini/tmp/hash/chats/session-abc.jsonl')
+    ).toBe(true);
     expect(matchesSessionFile('gemini', '/Users/test/.gemini/transcripts/foo.jsonl')).toBe(false);
   });
 
