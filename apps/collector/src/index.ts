@@ -36,8 +36,12 @@ async function main(): Promise<void> {
     process.exit(0);
   };
 
-  process.on("SIGINT", shutdown, { once: true });
-  process.on("SIGTERM", shutdown, { once: true });
+  process.once("SIGINT", () => {
+    void shutdown();
+  });
+  process.once("SIGTERM", () => {
+    void shutdown();
+  });
 }
 
 void main().catch((error) => {

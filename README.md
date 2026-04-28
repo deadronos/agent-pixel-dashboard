@@ -10,6 +10,9 @@ Watcher-first multi-agent observability stack from `idea.md`:
 - `plugins/plugin-gemini-watch`: gemini-cli session/transcript watcher plugin
 - `plugins/plugin-openclaw-watch`: openclaw session/transcript watcher plugin
 - `plugins/plugin-copilot-watch`: copilot-cli session/transcript watcher plugin
+- `plugins/plugin-opencode-watch`: OpenCode watcher plugin, preferring live SQLite state with JSON fallback
+- `plugins/plugin-hermes-watch`: Hermes agent session/transcript watcher plugin
+- `plugins/plugin-pi-watch`: Pi coding agent JSONL watcher plugin
 - optional CASS-backed session search at `GET /api/search/sessions`
 
 ## Quick start
@@ -54,8 +57,8 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `HUB_PORT` (default: `3030`)
 - `HUB_AUTH_TOKEN` (required; must match the collector token)
 - `CASS_BIN` (default: `cass`)
-- `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; leave blank for
-  permissive development, or set an allowlist in deployment)
+- `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; blank is
+  permissive during development and rejects cross-origin requests in `NODE_ENV=production`)
 
 ### Collector
 
@@ -67,12 +70,15 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `MAX_BATCH_BYTES` (default: `1500000`, keep below hub JSON body limit)
 - `WATCH_SOURCES` (default: `auto`; use `auto|all` or comma-separated sources)
 - `PLUGINS_DIR` (optional; defaults to repo `plugins/` directory for autodiscovery)
-- `SESSION_ROOTS` (optional comma-separated global override for all source watchers; falls back to `CODEX_SESSION_ROOTS` for compatibility)
+- `SESSION_ROOTS` (optional comma-separated global roots used in addition to source-specific roots)
 - `CODEX_SESSION_ROOTS` (optional comma-separated session roots)
 - `CLAUDE_SESSION_ROOTS` (optional comma-separated session roots)
 - `GEMINI_SESSION_ROOTS` (optional comma-separated session roots)
 - `OPENCLAW_SESSION_ROOTS` (optional comma-separated session roots)
 - `COPILOT_SESSION_ROOTS` (optional comma-separated session roots)
+- `OPENCODE_DATA_DIR` (optional OpenCode data directory; default `~/.local/share/opencode`)
+- `HERMES_DIR` (optional Hermes directory; default `~/.hermes`)
+- `PI_SESSION_ROOTS` (optional comma-separated Pi session roots)
 
 ### Optional Watcher Tuning
 
@@ -84,6 +90,13 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `OPENCLAW_SCAN_MAX_DEPTH` (default: `8`)
 - `OPENCLAW_SCAN_MAX_FILES` (default: `5000`)
 - `COPILOT_ACTIVE_WINDOW_MS` (default: `120000`)
+- `COPILOT_SCAN_INTERVAL_MS` (default: `2000`)
+- `COPILOT_SCAN_MAX_DEPTH` (default: `2`)
+- `COPILOT_SCAN_MAX_FILES` (default: `5000`)
+- `OPENCODE_ACTIVE_WINDOW_MS` (default: `120000`)
+- `OPENCODE_SCAN_INTERVAL_MS` (default: `2000`)
+- `HERMES_ACTIVE_WINDOW_MS` (default: `120000`)
+- `PI_ACTIVE_WINDOW_MS` (default: `120000`)
 
 ## CASS integration
 
@@ -94,6 +107,7 @@ Hub endpoint:
 Behavior:
 
 - uses `cass search ... --robot --fields minimal`
+- rejects blank, oversized, or control-character queries before invoking CASS
 - returns `503` if CASS is unavailable (`cass health --json` fails)
 
 This keeps search pluggable while letting collectors stay watcher-first.

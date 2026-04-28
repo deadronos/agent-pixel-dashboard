@@ -91,6 +91,10 @@ function splitCsv(value: string | undefined): string[] {
     .filter(Boolean);
 }
 
+function uniqueValues(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
 async function getFileStat(filePath: string): Promise<FileStatLike> {
   const stat = await fs.stat(filePath);
   return {
@@ -207,8 +211,11 @@ export async function discoverSessionRoots(
   }
 ): Promise<DiscoveredSessionRoot[]> {
   const envRoots = splitCsv(config.env[options.envVar]);
-  const configuredRoots =
-    config.configuredRoots.length > 0 ? config.configuredRoots : [...envRoots, ...options.defaultRoots];
+  const configuredRoots = uniqueValues(
+    config.configuredRoots.length > 0 || envRoots.length > 0
+      ? [...config.configuredRoots, ...envRoots]
+      : options.defaultRoots
+  );
   const expandedRoots = configuredRoots.map(expandHomePath);
   const discovered: DiscoveredSessionRoot[] = [];
 
@@ -221,7 +228,7 @@ export async function discoverSessionRoots(
         }
         discovered.push({
           id: `${options.idPrefix}-${index}`,
-          path: rootPath,
+          path: path.resolve(rootPath),
           host: config.host
         });
       } catch {
@@ -230,7 +237,13 @@ export async function discoverSessionRoots(
     })
   );
 
-  return discovered;
+  const filtered = discovered.filter((root) => {
+    return !discovered.some(
+      (other) => root.path !== other.path && root.path.startsWith(other.path + path.sep)
+    );
+  });
+
+  return filtered;
 }
 
 export interface JsonlIngestState {
@@ -367,6 +380,7 @@ export async function watchJsonlSessionFiles<T extends NormalizedEvent>(
     activeWindowMs: number;
     parseRecord: ParseRecord<T>;
     depth?: number;
+    ignored?: string | RegExp | Array<string | RegExp>;
   }
 ): Promise<WatchHandle> {
   const state = createJsonlIngestState();
@@ -374,6 +388,16 @@ export async function watchJsonlSessionFiles<T extends NormalizedEvent>(
     persistent: true,
     ignoreInitial: false,
     depth: options.depth ?? DEFAULT_WATCH_DEPTH,
+    ignored: options.ignored ?? [
+      /(^|[\/\\])\.git([\/\\]|$)/,
+      /(^|[\/\\])node_modules([\/\\]|$)/,
+      /(^|[\/\\])\.next([\/\\]|$)/,
+      /(^|[\/\\])dist([\/\\]|$)/,
+      /(^|[\/\\])\.cache([\/\\]|$)/,
+      /(^|[\/\\])\.DS_Store([\/\\]|$)/,
+      /(^|[\/\\])\.venv([\/\\]|$)/,
+      /(^|[\/\\])__pycache__([\/\\]|$)/
+    ],
     awaitWriteFinish: {
       stabilityThreshold: DEFAULT_STABILITY_THRESHOLD_MS,
       pollInterval: DEFAULT_POLL_INTERVAL_MS
@@ -422,6 +446,7 @@ export async function watchJsonSessionFiles<T extends NormalizedEvent>(
     activeWindowMs: number;
     parseRecord: ParseRecord<T>;
     depth?: number;
+    ignored?: string | RegExp | Array<string | RegExp>;
   }
 ): Promise<WatchHandle> {
   const state = createJsonFileIngestState();
@@ -429,6 +454,16 @@ export async function watchJsonSessionFiles<T extends NormalizedEvent>(
     persistent: true,
     ignoreInitial: false,
     depth: options.depth ?? DEFAULT_WATCH_DEPTH,
+    ignored: options.ignored ?? [
+      /(^|[\/\\])\.git([\/\\]|$)/,
+      /(^|[\/\\])node_modules([\/\\]|$)/,
+      /(^|[\/\\])\.next([\/\\]|$)/,
+      /(^|[\/\\])dist([\/\\]|$)/,
+      /(^|[\/\\])\.cache([\/\\]|$)/,
+      /(^|[\/\\])\.DS_Store([\/\\]|$)/,
+      /(^|[\/\\])\.venv([\/\\]|$)/,
+      /(^|[\/\\])__pycache__([\/\\]|$)/
+    ],
     awaitWriteFinish: {
       stabilityThreshold: DEFAULT_STABILITY_THRESHOLD_MS,
       pollInterval: DEFAULT_POLL_INTERVAL_MS

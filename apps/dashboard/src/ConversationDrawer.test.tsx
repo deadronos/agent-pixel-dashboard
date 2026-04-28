@@ -160,6 +160,8 @@ describe('ConversationDrawer', () => {
     expect(markup).toContain('Selected summary');
     expect(markup).toContain('Codex Tool');
     expect(markup).toContain('First turn');
+    expect(markup).toContain('--drawer-text:#132032');
+    expect(markup).toContain('--drawer-muted-text:rgba(19, 32, 50, 0.7)');
   });
 });
 

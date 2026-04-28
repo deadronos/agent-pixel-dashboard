@@ -9,6 +9,8 @@ import {
   createNormalizedSessionParser,
   discoverSessionRoots,
   getDefaultActivityScore,
+  getFirstTextContent,
+  getFirstToolCallFromContent,
   getStringValue,
   matchesSessionFile,
   watchJsonlSessionFilesByPolling,
@@ -17,15 +19,34 @@ import {
 
 import { buildOpenClawSessionId, getOpenClawAgentId } from "./identity.js";
 
-const DEFAULT_PATHS = ["~/.openclaw/agents", "~/.openclaw"];
+const DEFAULT_PATHS = ["~/.openclaw/agents"];
 const DEFAULT_SCAN_INTERVAL_MS = 2000;
-const DEFAULT_MAX_DEPTH = 8;
+const DEFAULT_MAX_DEPTH = 4;
 const DEFAULT_MAX_FILES = 5000;
 const SOURCE: SessionSource = "openclaw";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
 function getMessage(record: Record<string, unknown>): Record<string, unknown> | undefined {
   return record.message && typeof record.message === "object" ? (record.message as Record<string, unknown>) : undefined;
+}
+
+function getOpenClawTool(record: Record<string, unknown>) {
+  const message = getMessage(record);
+  return getFirstToolCallFromContent(message?.content) ||
+    (message?.name ? { name: getStringValue(message.name), detail: undefined } : undefined);
+}
+
+function getOpenClawText(record: Record<string, unknown>): string {
+  const message = getMessage(record);
+  return getFirstTextContent(message?.content) ||
+    getStringValue(record.summary) ||
+    getStringValue(record.message) ||
+    getStringValue(record.text) ||
+    getStringValue(record.content);
+}
+
+function getOpenClawRole(record: Record<string, unknown>): string | undefined {
+  return getStringValue(getMessage(record)?.role) || undefined;
 }
 
 export const parseOpenClawRecord = createNormalizedSessionParser({
@@ -39,19 +60,21 @@ export const parseOpenClawRecord = createNormalizedSessionParser({
     getStringValue(record.created_at) ||
     getStringValue(record.createdAt) ||
     fallbackTimestamp,
-  getEventType: ({ record }) => getStringValue(record.event_type) || getStringValue(record.type) || "message",
+  getEventType: ({ record }) => getOpenClawTool(record) && Array.isArray(getMessage(record)?.content)
+    ? "tool_use"
+    : getStringValue(record.event_type) || getStringValue(record.type) || "message",
   getStatus: ({ record }) => getStringValue(record.status) || "active",
   getSummary: ({ record }) =>
-    getStringValue(getMessage(record)?.role) ||
-    getStringValue(record.summary) ||
-    getStringValue(record.message) ||
-    getStringValue(record.text) ||
-    getStringValue(record.content),
+    getOpenClawTool(record)?.name ||
+    getOpenClawText(record) ||
+    "OpenClaw activity",
   getDetail: ({ record }) =>
+    getOpenClawTool(record)?.detail ||
     getStringValue(getMessage(record)?.model) ||
+    getOpenClawRole(record) ||
     getStringValue(record.detail) ||
-    getStringValue(record.content) ||
-    getStringValue(record.raw),
+    getStringValue(record.raw) ||
+    undefined,
   getActivityScore: ({ eventType, record }) => getDefaultActivityScore(eventType, record.activityScore),
   getMeta: ({ filePath, record }) => {
     const agentId = getOpenClawAgentId(filePath) || undefined;
@@ -60,10 +83,13 @@ export const parseOpenClawRecord = createNormalizedSessionParser({
       agentId,
       groupKey: agentId,
       toolName:
+        getOpenClawTool(record)?.name ||
         getStringValue(record.toolName) ||
         getStringValue(record.tool_name) ||
-        getStringValue(getMessage(record)?.name),
-      rawType: getStringValue(record.type)
+        undefined,
+      role: getOpenClawRole(record),
+      rawType: getStringValue(record.type),
+      model: getStringValue(getMessage(record)?.model) || undefined
     };
   }
 });

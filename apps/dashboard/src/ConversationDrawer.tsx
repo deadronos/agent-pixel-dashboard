@@ -95,6 +95,9 @@ export function ConversationDrawer({
   const events = detail?.recentEvents ?? [];
   const drawerStyle = {
     '--drawer-bg': 'rgba(248, 250, 255, 0.94)',
+    '--drawer-text': '#132032',
+    '--drawer-muted-text': 'rgba(19, 32, 50, 0.7)',
+    '--drawer-card-bg': 'rgba(255, 255, 255, 0.72)',
   } as CSSProperties;
 
   return (

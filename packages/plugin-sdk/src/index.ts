@@ -40,6 +40,16 @@ export interface CollectorPlugin {
 
 export { isActiveSessionFile, isSessionSource, matchesSessionFile, sessionSources, type SessionSource } from "./session-detection.js";
 export {
+  asArray,
+  asRecord,
+  getFirstTextContent,
+  getFirstToolCallFromContent,
+  getToolCall,
+  summarizeToolInput,
+  truncateText,
+  type ToolCallSummary
+} from "./record-formatting.js";
+export {
   buildNormalizedSessionEvent,
   collectJsonlFiles,
   createNormalizedSessionParser,

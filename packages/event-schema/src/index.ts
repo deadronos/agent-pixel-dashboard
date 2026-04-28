@@ -163,10 +163,16 @@ export function getStatusFromTimestamp(timestamp: string, now = new Date()): Ent
 export function resolveEntityStatus(
   currentStatus: EntityStatus | undefined,
   lastEventAt: string,
-  now = new Date()
+  now = new Date(),
+  activityScore = 0.5
 ): EntityStatus {
   if (currentStatus === "done" || currentStatus === "error") {
     return currentStatus;
+  }
+
+  const ageMs = now.getTime() - new Date(lastEventAt).getTime();
+  if (activityScore >= 0.8 && ageMs <= LIVE_STATUS_WINDOWS_MS.idle) {
+    return "active";
   }
 
   return getStatusFromTimestamp(lastEventAt, now);
@@ -221,6 +227,6 @@ export function projectEntityEvent(
 export function normalizeDashboardEntity(entity: DashboardEntity, now = new Date()): DashboardEntity {
   return {
     ...entity,
-    currentStatus: resolveEntityStatus(entity.currentStatus, entity.lastEventAt, now)
+    currentStatus: resolveEntityStatus(entity.currentStatus, entity.lastEventAt, now, entity.activityScore)
   };
 }

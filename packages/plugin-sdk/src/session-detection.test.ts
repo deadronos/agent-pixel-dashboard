@@ -14,6 +14,9 @@ describe('matchesSessionFile', () => {
     expect(
       matchesSessionFile('gemini', '/Users/test/.gemini/tmp/hash/chats/session-abc.json')
     ).toBe(true);
+    expect(
+      matchesSessionFile('gemini', '/Users/test/.gemini/tmp/hash/chats/session-abc.jsonl')
+    ).toBe(true);
     expect(matchesSessionFile('gemini', '/Users/test/.gemini/transcripts/foo.jsonl')).toBe(false);
   });
 
@@ -38,6 +41,24 @@ describe('matchesSessionFile', () => {
       true
     );
     expect(matchesSessionFile('claude', '/Users/test/.claude/history.jsonl')).toBe(false);
+  });
+
+  it('matches opencode json fallback session files', () => {
+    expect(
+      matchesSessionFile('opencode', '/Users/test/.local/share/opencode/storage/session/work/abc.json')
+    ).toBe(true);
+    expect(matchesSessionFile('opencode', '/Users/test/.local/share/opencode/storage/message/abc.json')).toBe(false);
+  });
+
+  it('matches hermes session metadata and transcript files', () => {
+    expect(matchesSessionFile('hermes', '/Users/test/.hermes/sessions/session_abc.json')).toBe(true);
+    expect(matchesSessionFile('hermes', '/Users/test/.hermes/sessions/abc.jsonl')).toBe(true);
+    expect(matchesSessionFile('hermes', '/Users/test/.hermes/cache/session_abc.json')).toBe(false);
+  });
+
+  it('matches pi agent session files', () => {
+    expect(matchesSessionFile('pi', '/Users/test/.pi/agent/sessions/project/session.jsonl')).toBe(true);
+    expect(matchesSessionFile('pi', '/Users/test/.pi/history/session.jsonl')).toBe(false);
   });
 });
 

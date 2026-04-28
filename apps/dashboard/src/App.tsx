@@ -41,6 +41,9 @@ export function App() {
     () => createResolvedSettings(dashboardConfig, activeViewerPreferences),
     [activeViewerPreferences]
   );
+  const darkThemeId = dashboardConfig.themes.presets.find((theme) => theme.id === "night-shift")?.id;
+  const lightThemeId = dashboardConfig.themes.defaultThemeId;
+  const darkMode = settings.theme.id === darkThemeId;
   const visibleGroups = useMemo(() => getVisibleEntityGroups(entities, settings), [entities, settings]);
   const selectedVisibleGroup = useMemo(
     () => findVisibleEntityGroupById(visibleGroups, selectedGroupId),
@@ -127,6 +130,13 @@ export function App() {
             statusSummary={statusSummary}
             settingsPanelAvailable={settings.ui.showSettingsPanel}
             settingsPanelOpen={showSettingsPanel}
+            darkMode={darkMode}
+            onToggleDarkMode={() => {
+              setViewerPreferences((previous) => ({
+                ...previous,
+                themeId: darkMode ? lightThemeId : darkThemeId ?? lightThemeId
+              }));
+            }}
             onToggleSettings={() => setSettingsPanelOpen((current) => !current)}
           />
 

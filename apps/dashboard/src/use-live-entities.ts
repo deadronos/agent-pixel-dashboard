@@ -6,11 +6,12 @@ import {
   type DashboardEntity,
   type NormalizedEvent
 } from "@agent-watch/event-schema";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type ConnectionState = "connecting" | "live" | "offline";
 
 const MAX_RECENT_EVENTS = 25;
+const FALLBACK_POLL_INTERVAL_MS = 5_000;
 
 function normalizeEntity(entity: DashboardEntity): DashboardEntity {
   return normalizeDashboardEntity(entity);
@@ -33,7 +34,7 @@ export function useLiveEntities(hubHttp: string, hubWs: string): {
   const [entities, setEntities] = useState<DashboardEntity[]>([]);
   const [connectionState, setConnectionState] = useState<ConnectionState>("connecting");
 
-  useEffect(() => {
+  const fetchState = useCallback(() =>
     fetch(`${hubHttp}/api/state`)
       .then((res) => res.json())
       .then((data) => {
@@ -42,8 +43,25 @@ export function useLiveEntities(hubHttp: string, hubWs: string): {
       })
       .catch(() => {
         // Ignore initial fetch failures and let the live stream recover.
-      });
-  }, [hubHttp]);
+      }), [hubHttp]);
+
+  useEffect(() => {
+    void fetchState();
+  }, [fetchState]);
+
+  useEffect(() => {
+    if (connectionState === "live") {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void fetchState();
+    }, FALLBACK_POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [connectionState, fetchState]);
 
   useEffect(() => {
     let socket: WebSocket;

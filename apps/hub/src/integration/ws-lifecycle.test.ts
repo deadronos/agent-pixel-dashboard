@@ -8,11 +8,13 @@ describe("WebSocket lifecycle", () => {
   const authToken = "test-token";
   let close: () => Promise<void>;
   let baseUrl: string;
+  let getWebSocketClients: () => Set<WebSocket>;
 
   beforeEach(async () => {
-    const hub = await startTestHub({ authToken });
+    const hub = await startTestHub({ authToken, heartbeatIntervalMs: 25 });
     close = hub.close;
     baseUrl = hub.baseUrl;
+    getWebSocketClients = hub.getWebSocketClients;
   });
 
   afterEach(async () => {
@@ -143,10 +145,8 @@ describe("WebSocket lifecycle", () => {
   });
 
   it("4. Reconnect shows current entity count: After disconnecting and reconnecting, hello shows correct entity count", async () => {
-    let ws1: WebSocket | undefined;
-    let ws2: WebSocket | undefined;
     // Connect first client
-    ws1 = new WebSocket(`${baseUrl}/ws`);
+    const ws1 = new WebSocket(`${baseUrl}/ws`);
 
     let hello1Resolve: () => void;
     const hello1Received = new Promise<void>((resolve) => {
@@ -192,12 +192,11 @@ describe("WebSocket lifecycle", () => {
     expect(res.status).toBe(200);
 
     ws1.close();
-    ws1 = undefined;
 
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // Reconnect and verify entity count in hello
-    ws2 = new WebSocket(`${baseUrl}/ws`);
+    const ws2 = new WebSocket(`${baseUrl}/ws`);
 
     const hello2Promise = new Promise<unknown>((resolve) => {
       ws2.on("message", (data) => resolve(JSON.parse(data.toString())));
@@ -211,7 +210,20 @@ describe("WebSocket lifecycle", () => {
     const hello = await hello2Promise;
     expect(hello).toMatchObject({ type: "hello", entities: 1 });
 
-    ws1?.close();
-    ws2?.close();
+    ws2.close();
+  });
+
+  it("5. Heartbeat terminates clients that stop answering pings", async () => {
+    const ws = new WebSocket(`${baseUrl}/ws`);
+    await new Promise<void>((resolve, reject) => {
+      ws.on("open", resolve);
+      ws.on("error", reject);
+    });
+    const [serverClient] = Array.from(getWebSocketClients()) as Array<WebSocket & { isAlive?: boolean }>;
+    serverClient.isAlive = false;
+
+    await new Promise((resolve) => setTimeout(resolve, 35));
+
+    expect(getWebSocketClients().size).toBe(0);
   });
 });

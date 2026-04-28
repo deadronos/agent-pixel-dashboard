@@ -17,8 +17,28 @@ export interface SessionSearchResponse {
   results: SessionSearchResult[];
 }
 
+const MAX_CASS_QUERY_LENGTH = 256;
+
+export function sanitizeCassQuery(query: string): string {
+  const sanitized = query.trim();
+  if (sanitized.length > MAX_CASS_QUERY_LENGTH) {
+    throw new Error(`CASS search query is too long; max ${MAX_CASS_QUERY_LENGTH} characters`);
+  }
+  if ([...sanitized].some((char) => {
+    const code = char.charCodeAt(0);
+    return code < 32 || code === 127;
+  })) {
+    throw new Error("CASS search query cannot contain control characters");
+  }
+  return sanitized;
+}
+
 export class CassSearchClient {
-  constructor(private readonly binary = process.env.CASS_BIN ?? 'cass') {}
+  private readonly binary: string;
+
+  constructor(binary = process.env.CASS_BIN ?? 'cass') {
+    this.binary = binary;
+  }
 
   async isAvailable(): Promise<boolean> {
     try {
@@ -30,7 +50,8 @@ export class CassSearchClient {
   }
 
   async search(query: string, limit = 10): Promise<SessionSearchResponse> {
-    const args = ['search', query, '--robot', '--limit', String(limit), '--fields', 'minimal'];
+    const safeQuery = sanitizeCassQuery(query);
+    const args = ['search', safeQuery, '--robot', '--limit', String(limit), '--fields', 'minimal'];
     const { stdout } = await execFileAsync(this.binary, args, {
       timeout: 12_000,
       maxBuffer: 2_000_000,
@@ -38,7 +59,7 @@ export class CassSearchClient {
     const parsed = JSON.parse(stdout) as { results?: SessionSearchResult[] };
     return {
       backend: 'cass',
-      query,
+      query: safeQuery,
       results: parsed.results ?? [],
     };
   }

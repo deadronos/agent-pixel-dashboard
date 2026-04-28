@@ -1,8 +1,12 @@
 import type { NormalizedEvent } from "@agent-watch/event-schema";
 import { describe, expect, it } from "vitest";
 
-import { createRecentEventsHandler } from "./recent-events-handler.js";
 import { HubStore } from "./hub-store.js";
+import { createRecentEventsHandler } from "./recent-events-handler.js";
+
+interface RecentEventsBody {
+  events: NormalizedEvent[];
+}
 
 function sampleEvent(overrides: Partial<NormalizedEvent> = {}): NormalizedEvent {
   return {
@@ -29,7 +33,7 @@ function sampleEvent(overrides: Partial<NormalizedEvent> = {}): NormalizedEvent 
 function createMockRes() {
   const res: {
     statusCode: number;
-    body: unknown;
+    body: RecentEventsBody | undefined;
     status: (code: number) => typeof res;
     json: (body: unknown) => void;
   } = {
@@ -40,7 +44,7 @@ function createMockRes() {
       return this;
     },
     json(_body: unknown) {
-      this.body = _body;
+      this.body = _body as RecentEventsBody;
     }
   };
   return res;
@@ -81,7 +85,7 @@ describe("createRecentEventsHandler", () => {
     handler(req, res as any, () => undefined);
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty("events");
-    expect(Array.isArray(res.body.events)).toBe(true);
+    expect(Array.isArray(res.body?.events)).toBe(true);
   });
 
   it("clamps limit=0 to minimum of 1", () => {
@@ -94,7 +98,7 @@ describe("createRecentEventsHandler", () => {
     handler(req, res as any, () => undefined);
     expect(res.statusCode).toBe(200);
     // With limit clamped to 1, slice(-1) returns only the last event
-    expect(res.body.events.length).toBe(1);
+    expect(res.body?.events.length).toBe(1);
   });
 
   it("clamps limit=9999 to maximum of 500", () => {
@@ -106,7 +110,7 @@ describe("createRecentEventsHandler", () => {
 
     handler(req, res as any, () => undefined);
     expect(res.statusCode).toBe(200);
-    expect(res.body.events.length).toBe(500);
+    expect(res.body?.events.length).toBe(500);
   });
 
   it("defaults to 100 when no limit is provided", () => {
@@ -118,7 +122,7 @@ describe("createRecentEventsHandler", () => {
 
     handler(req, res as any, () => undefined);
     expect(res.statusCode).toBe(200);
-    expect(res.body.events.length).toBe(100);
+    expect(res.body?.events.length).toBe(100);
   });
 
   it("returns empty events array when store is empty", () => {
@@ -129,6 +133,6 @@ describe("createRecentEventsHandler", () => {
 
     handler(req, res as any, () => undefined);
     expect(res.statusCode).toBe(200);
-    expect(res.body.events).toEqual([]);
+    expect(res.body?.events).toEqual([]);
   });
 });

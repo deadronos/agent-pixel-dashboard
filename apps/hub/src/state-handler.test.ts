@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createStateHandler } from "./state-handler.js";
 import type { HubStore } from "./hub-store.js";
+import { createStateHandler } from "./state-handler.js";
 
 function createMockRes() {
   const res: {
