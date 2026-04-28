@@ -37,7 +37,7 @@ plugins/plugin-openclaw-watch/src/
 - Modify: `packages/event-schema/src/index.ts`
 - Modify: `packages/event-schema/src/index.test.ts`
 
-- [ ] **Step 1: Add ToolRunMetaSchema**
+- [x] **Step 1: Add ToolRunMetaSchema**
   In `packages/event-schema/src/index.ts`, define `ToolRunMetaSchema`:
   ```typescript
   export const ToolRunMetaSchema = z.object({
@@ -51,13 +51,13 @@ plugins/plugin-openclaw-watch/src/
   export type ToolRunMeta = z.infer<typeof ToolRunMetaSchema>;
   ```
 
-- [ ] **Step 2: Export `ToolRunMeta` type**
+- [x] **Step 2: Export `ToolRunMeta` type**
   Export the newly created type so collectors and the dashboard can import it.
 
-- [ ] **Step 3: Update schema tests**
+- [x] **Step 3: Update schema tests**
   In `index.test.ts`, add a test block verifying `ToolRunMetaSchema.parse()` works for valid tool meta payloads and fails on missing `toolName`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git add packages/event-schema
   git commit -m "feat(schema): add ToolRunMetaSchema for granular tool runs"
@@ -71,13 +71,13 @@ plugins/plugin-openclaw-watch/src/
 - Modify: `apps/hub/src/hub-store.ts` or related state handlers where expiration happens.
   *(Note: The plan assumes state decay logic lives where `getStatusFromTimestamp` is used. If it's in `event-schema/src/index.ts`, we update `resolveEntityStatus` there.)*
 
-- [ ] **Step 1: Update Status Resolution for Tools**
+- [x] **Step 1: Update Status Resolution for Tools**
   In `packages/event-schema/src/index.ts`, modify `resolveEntityStatus` or add a `LIVE_STATUS_WINDOWS_MS` override.
   Tool runs should decay faster. Once a tool is `done` or `error`, it should disappear from the active entity list within 30-60 seconds, whereas sessions can remain `dormant` for 5 minutes.
   
   *Alternative approach:* Add a UI-side filter in the dashboard to hide `done` tools older than 30s. This is simpler and doesn't pollute the hub's generic state logic. Let's go with the UI-side filter for `tool-run` specific expiration to keep the Hub generic.
   
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
   *(Skip if doing UI-side filtering only. If altering schema logic, commit here).*
 
 ---
@@ -89,19 +89,19 @@ plugins/plugin-openclaw-watch/src/
 - Modify: `apps/dashboard/src/dashboard-grouping.ts`
 - Modify: `apps/dashboard/src/styles.css`
 
-- [ ] **Step 1: Extract child tools**
+- [x] **Step 1: Extract child tools**
   In `dashboard-grouping.ts`, implement a function to map child entities (where `entityKind === "tool-run"`) to their respective `parentEntityId`.
 
-- [ ] **Step 2: Render nested tool runs**
+- [x] **Step 2: Render nested tool runs**
   In `AgentFaceCard.tsx`, update the component to accept an array of `childEntities`. 
   Iterate over `childEntities` and render a smaller, compact `<div className="tool-run-indicator">`.
   Display `entity.displayName` (which will be the tool name) and an animated spinner or progress bar if `currentStatus === "active"`.
   If `currentStatus === "done"` or `"error"`, show a success check or error cross, then apply a CSS fade-out animation if the `lastEventAt` is older than 15 seconds.
 
-- [ ] **Step 3: Update Grid Layout logic**
+- [x] **Step 3: Update Grid Layout logic**
   Ensure that `tool-run` entities are *filtered out* of the top-level hero tile grid so they don't consume their own giant column. They should strictly render inside their parent.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   ```bash
   git add apps/dashboard
   git commit -m "feat(dashboard): render nested tool-run entities in AgentFaceCard"
@@ -115,10 +115,10 @@ plugins/plugin-openclaw-watch/src/
 - Modify: `plugins/plugin-openclaw-watch/src/index.ts`
 - Modify: `plugins/plugin-openclaw-watch/src/parser.test.ts` (or equivalent parsing file)
 
-- [ ] **Step 1: Parse tool invocations**
+- [x] **Step 1: Parse tool invocations**
   Update the plugin to detect when OpenClaw (or Copilot/Gemini) invokes a tool. Extract the tool name and arguments.
 
-- [ ] **Step 2: Emit `tool_start` event**
+- [x] **Step 2: Emit `tool_start` event**
   Generate a deterministic child `entityId` using `makeDeterministicEventId` based on the session and the tool name/sequence.
   Emit a `NormalizedEvent` with:
   ```typescript
@@ -137,7 +137,7 @@ plugins/plugin-openclaw-watch/src/
   }
   ```
 
-- [ ] **Step 3: Emit `tool_end` event**
+- [x] **Step 3: Emit `tool_end` event**
   When the transcript indicates the tool returned output, emit an event transitioning the child entity to `done` or `error`.
   ```typescript
   {
@@ -157,7 +157,7 @@ plugins/plugin-openclaw-watch/src/
   }
   ```
 
-- [ ] **Step 4: Test and Commit**
+- [x] **Step 4: Test and Commit**
   Run the plugin's unit tests with a mock fixture.
   ```bash
   cd plugins/plugin-openclaw-watch && npx vitest run
@@ -169,8 +169,8 @@ plugins/plugin-openclaw-watch/src/
 
 ## Completion Checklist
 
-- [ ] 1. Schema `ToolRunMetaSchema` added and tested
-- [ ] 2. Dashboard grid filters out `entityKind: "tool-run"` from top-level tiles
-- [ ] 3. Dashboard `AgentFaceCard` renders child tools with visual state logic
-- [ ] 4. At least one collector plugin parses and emits valid `tool_start` and `tool_end` entities
-- [ ] 5. End-to-end local test: Run collector, start an agent with a slow tool (like web_fetch or grep), and verify the nested card appears.
+- [x] 1. Schema `ToolRunMetaSchema` added and tested
+- [x] 2. Dashboard grid filters out `entityKind: "tool-run"` from top-level tiles
+- [x] 3. Dashboard `AgentFaceCard` renders child tools with visual state logic
+- [x] 4. At least one collector plugin parses and emits valid `tool_start` and `tool_end` entities
+- [x] 5. End-to-end local test: Run collector, start an agent with a slow tool (like web_fetch or grep), and verify the nested card appears.

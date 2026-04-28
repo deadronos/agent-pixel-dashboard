@@ -1,20 +1,24 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { setInterval } from "node:timers";
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { setInterval } from 'node:timers';
 
-import { makeDeterministicEventId, parseNormalizedEvent, type NormalizedEvent } from "@agent-watch/event-schema";
-import { watch } from "chokidar";
+import {
+  makeDeterministicEventId,
+  parseNormalizedEvent,
+  type NormalizedEvent,
+} from '@agent-watch/event-schema';
+import { watch } from 'chokidar';
 
-import { isActiveSessionFile } from "./session-detection.js";
+import { isActiveSessionFile } from './session-detection.js';
 
-import type { DiscoveredSessionRoot, PluginContext, WatchContext, WatchHandle } from "./index.js";
+import type { DiscoveredSessionRoot, PluginContext, WatchContext, WatchHandle } from './index.js';
 
 const DEFAULT_WATCH_DEPTH = 6;
 const DEFAULT_STABILITY_THRESHOLD_MS = 120;
 const DEFAULT_POLL_INTERVAL_MS = 40;
 
-type WatchReason = "add" | "change";
+type WatchReason = 'add' | 'change';
 
 type FileStatLike = {
   size: number;
@@ -28,7 +32,7 @@ type ParseRecord<T extends NormalizedEvent> = (
   record: Record<string, unknown>,
   sequence: number,
   fallbackTimestamp: string
-) => T;
+) => T | T[];
 /* eslint-enable no-unused-vars */
 
 export interface NormalizedSessionParserContext {
@@ -51,7 +55,7 @@ export interface BuildNormalizedSessionEventOptions {
   sessionId?: string;
   entityId: string;
   parentEntityId?: string | null;
-  entityKind?: NormalizedEvent["entityKind"];
+  entityKind?: NormalizedEvent['entityKind'];
   displayName: string;
   timestamp?: string;
   eventType?: string;
@@ -80,14 +84,14 @@ export interface NormalizedSessionParserConfig {
   getActivityScore?: (ctx: ResolvedSessionParserContext) => number | undefined;
   getMeta?: (ctx: ResolvedSessionParserContext) => Record<string, unknown> | undefined;
   getParentEntityId?: (ctx: ResolvedSessionParserContext) => string | null | undefined;
-  getEntityKind?: (ctx: ResolvedSessionParserContext) => NormalizedEvent["entityKind"];
+  getEntityKind?: (ctx: ResolvedSessionParserContext) => NormalizedEvent['entityKind'];
   /* eslint-enable no-unused-vars */
 }
 
 function splitCsv(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(",")
-    .map((entry) => entry.trim())
+  return (value ?? '')
+    .split(',')
+    .map(entry => entry.trim())
     .filter(Boolean);
 }
 
@@ -100,31 +104,33 @@ async function getFileStat(filePath: string): Promise<FileStatLike> {
   return {
     size: stat.size,
     mtime: stat.mtime,
-    mtimeMs: stat.mtimeMs
+    mtimeMs: stat.mtimeMs,
   };
 }
 
 export function expandHomePath(input: string): string {
-  if (!input.startsWith("~")) {
+  if (!input.startsWith('~')) {
     return input;
   }
 
   return path.join(os.homedir(), input.slice(1));
 }
 
-export function getStringValue(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
+export function getStringValue(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
 }
 
 export function getDefaultActivityScore(eventType: string, rawActivityScore: unknown): number {
-  if (typeof rawActivityScore === "number") {
+  if (typeof rawActivityScore === 'number') {
     return Math.max(0, Math.min(1, rawActivityScore));
   }
-  return eventType.startsWith("tool") ? 0.85 : 0.6;
+  return eventType.startsWith('tool') ? 0.85 : 0.6;
 }
 
-export function buildNormalizedSessionEvent(options: BuildNormalizedSessionEventOptions): NormalizedEvent {
-  const eventType = options.eventType?.trim() || "message";
+export function buildNormalizedSessionEvent(
+  options: BuildNormalizedSessionEventOptions
+): NormalizedEvent {
+  const eventType = options.eventType?.trim() || 'message';
   const timestamp = options.timestamp?.trim();
   const detail = options.detail?.trim() || undefined;
   const summary = options.summary?.trim() || options.defaultSummary;
@@ -135,7 +141,7 @@ export function buildNormalizedSessionEvent(options: BuildNormalizedSessionEvent
       timestamp: timestamp || new Date(0).toISOString(),
       eventType,
       sequence: options.sequence,
-      detail: detail || summary
+      detail: detail || summary,
     }),
     timestamp: timestamp || new Date().toISOString(),
     source: options.source,
@@ -143,18 +149,27 @@ export function buildNormalizedSessionEvent(options: BuildNormalizedSessionEvent
     entityId: options.entityId,
     sessionId: options.sessionId,
     parentEntityId: options.parentEntityId ?? null,
-    entityKind: options.entityKind ?? "session",
+    entityKind: options.entityKind ?? 'session',
     displayName: options.displayName,
     eventType,
-    status: typeof options.status === "string" ? options.status : "active",
+    status: typeof options.status === 'string' ? options.status : 'active',
     summary,
     detail,
     activityScore: Math.max(0, Math.min(1, options.activityScore ?? 0.5)),
     sequence: options.sequence,
-    meta: options.meta
+    meta: options.meta,
   };
 
   return parseNormalizedEvent(event);
+}
+
+function emitParsedRecords(
+  record: NormalizedEvent | NormalizedEvent[],
+  onRecord: WatchContext['onEvent']
+): void {
+  for (const event of Array.isArray(record) ? record : [record]) {
+    onRecord(event);
+  }
 }
 
 export function createNormalizedSessionParser(config: NormalizedSessionParserConfig) {
@@ -170,14 +185,14 @@ export function createNormalizedSessionParser(config: NormalizedSessionParserCon
       filePath,
       record,
       sequence,
-      fallbackTimestamp
+      fallbackTimestamp,
     };
     const sessionId = config.getSessionId(baseContext);
-    const eventType = config.getEventType?.(baseContext) || "message";
+    const eventType = config.getEventType?.(baseContext) || 'message';
     const resolvedContext: ResolvedSessionParserContext = {
       ...baseContext,
       sessionId,
-      eventType
+      eventType,
     };
 
     return buildNormalizedSessionEvent({
@@ -187,17 +202,17 @@ export function createNormalizedSessionParser(config: NormalizedSessionParserCon
       sessionId,
       entityId: config.getEntityId?.(resolvedContext) ?? `${config.source}:session:${sessionId}`,
       parentEntityId: config.getParentEntityId?.(resolvedContext),
-      entityKind: config.getEntityKind?.(resolvedContext) ?? "session",
+      entityKind: config.getEntityKind?.(resolvedContext) ?? 'session',
       displayName: config.getDisplayName?.(resolvedContext) ?? config.defaultDisplayName,
       timestamp: config.getTimestamp?.(baseContext) ?? fallbackTimestamp,
       eventType,
-      status: config.getStatus?.(resolvedContext) ?? "active",
+      status: config.getStatus?.(resolvedContext) ?? 'active',
       summary: config.getSummary?.(resolvedContext),
       defaultSummary: config.defaultSummary,
       detail: config.getDetail?.(resolvedContext),
       activityScore: config.getActivityScore?.(resolvedContext),
       sequence,
-      meta: config.getMeta?.(resolvedContext)
+      meta: config.getMeta?.(resolvedContext),
     });
   };
 }
@@ -229,7 +244,7 @@ export async function discoverSessionRoots(
         discovered.push({
           id: `${options.idPrefix}-${index}`,
           path: path.resolve(rootPath),
-          host: config.host
+          host: config.host,
         });
       } catch {
         // Missing roots are expected during local development.
@@ -237,9 +252,9 @@ export async function discoverSessionRoots(
     })
   );
 
-  const filtered = discovered.filter((root) => {
+  const filtered = discovered.filter(root => {
     return !discovered.some(
-      (other) => root.path !== other.path && root.path.startsWith(other.path + path.sep)
+      other => root.path !== other.path && root.path.startsWith(other.path + path.sep)
     );
   });
 
@@ -259,14 +274,14 @@ export interface JsonFileIngestState {
 export function createJsonlIngestState(): JsonlIngestState {
   return {
     offsets: new Map<string, number>(),
-    sequences: new Map<string, number>()
+    sequences: new Map<string, number>(),
   };
 }
 
 export function createJsonFileIngestState(): JsonFileIngestState {
   return {
     mtimes: new Map<string, number>(),
-    sequences: new Map<string, number>()
+    sequences: new Map<string, number>(),
   };
 }
 
@@ -278,13 +293,17 @@ export async function ingestJsonlFile<T extends NormalizedEvent>(
     activeWindowMs?: number;
     stat?: FileStatLike;
     parseRecord: ParseRecord<T>;
-    onRecord: WatchContext["onEvent"];
-    onError: WatchContext["onError"];
+    onRecord: WatchContext['onEvent'];
+    onError: WatchContext['onError'];
   }
 ): Promise<void> {
   try {
     const stat = options.stat ?? (await getFileStat(filePath));
-    if (!state.offsets.has(filePath) && options.reason === "add" && options.activeWindowMs !== undefined) {
+    if (
+      !state.offsets.has(filePath) &&
+      options.reason === 'add' &&
+      options.activeWindowMs !== undefined
+    ) {
       if (!isActiveSessionFile(stat.mtimeMs, Date.now(), options.activeWindowMs)) {
         state.offsets.set(filePath, stat.size);
         return;
@@ -293,7 +312,7 @@ export async function ingestJsonlFile<T extends NormalizedEvent>(
 
     const previousOffset = state.offsets.get(filePath) ?? 0;
     const nextOffset = stat.size < previousOffset ? 0 : previousOffset;
-    const handle = await fs.open(filePath, "r");
+    const handle = await fs.open(filePath, 'r');
 
     try {
       const length = stat.size - nextOffset;
@@ -304,8 +323,8 @@ export async function ingestJsonlFile<T extends NormalizedEvent>(
 
       const buffer = Buffer.alloc(length);
       await handle.read(buffer, 0, length, nextOffset);
-      const text = buffer.toString("utf8");
-      const lines = text.split("\n").filter((line) => line.trim().length > 0);
+      const text = buffer.toString('utf8');
+      const lines = text.split('\n').filter(line => line.trim().length > 0);
 
       for (const line of lines) {
         let parsed: Record<string, unknown>;
@@ -320,7 +339,7 @@ export async function ingestJsonlFile<T extends NormalizedEvent>(
 
         try {
           const record = options.parseRecord(filePath, parsed, sequence, stat.mtime.toISOString());
-          options.onRecord(record);
+          emitParsedRecords(record, options.onRecord);
         } catch (error) {
           options.onError(error as Error);
         }
@@ -342,13 +361,13 @@ export async function ingestJsonFile<T extends NormalizedEvent>(
     reason: WatchReason;
     activeWindowMs: number;
     parseRecord: ParseRecord<T>;
-    onRecord: WatchContext["onEvent"];
-    onError: WatchContext["onError"];
+    onRecord: WatchContext['onEvent'];
+    onError: WatchContext['onError'];
   }
 ): Promise<void> {
   try {
     const stat = await getFileStat(filePath);
-    if (!state.mtimes.has(filePath) && options.reason === "add") {
+    if (!state.mtimes.has(filePath) && options.reason === 'add') {
       if (!isActiveSessionFile(stat.mtimeMs, Date.now(), options.activeWindowMs)) {
         state.mtimes.set(filePath, stat.mtimeMs);
         return;
@@ -356,15 +375,22 @@ export async function ingestJsonFile<T extends NormalizedEvent>(
     }
 
     const previousMtime = state.mtimes.get(filePath);
-    if (options.reason === "change" && previousMtime !== undefined && stat.mtimeMs <= previousMtime) {
+    if (
+      options.reason === 'change' &&
+      previousMtime !== undefined &&
+      stat.mtimeMs <= previousMtime
+    ) {
       return;
     }
 
-    const raw = await fs.readFile(filePath, "utf8");
+    const raw = await fs.readFile(filePath, 'utf8');
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const sequence = (state.sequences.get(filePath) ?? 0) + 1;
     state.sequences.set(filePath, sequence);
-    options.onRecord(options.parseRecord(filePath, parsed, sequence, stat.mtime.toISOString()));
+    emitParsedRecords(
+      options.parseRecord(filePath, parsed, sequence, stat.mtime.toISOString()),
+      options.onRecord
+    );
     state.mtimes.set(filePath, stat.mtimeMs);
   } catch (error) {
     options.onError(error as Error);
@@ -389,19 +415,19 @@ export async function watchJsonlSessionFiles<T extends NormalizedEvent>(
     ignoreInitial: false,
     depth: options.depth ?? DEFAULT_WATCH_DEPTH,
     ignored: options.ignored ?? [
-      /(^|[\/\\])\.git([\/\\]|$)/,
-      /(^|[\/\\])node_modules([\/\\]|$)/,
-      /(^|[\/\\])\.next([\/\\]|$)/,
-      /(^|[\/\\])dist([\/\\]|$)/,
-      /(^|[\/\\])\.cache([\/\\]|$)/,
-      /(^|[\/\\])\.DS_Store([\/\\]|$)/,
-      /(^|[\/\\])\.venv([\/\\]|$)/,
-      /(^|[\/\\])__pycache__([\/\\]|$)/
+      /(^|[/\\])\.git([/\\]|$)/,
+      /(^|[/\\])node_modules([/\\]|$)/,
+      /(^|[/\\])\.next([/\\]|$)/,
+      /(^|[/\\])dist([/\\]|$)/,
+      /(^|[/\\])\.cache([/\\]|$)/,
+      /(^|[/\\])\.DS_Store([/\\]|$)/,
+      /(^|[/\\])\.venv([/\\]|$)/,
+      /(^|[/\\])__pycache__([/\\]|$)/,
     ],
     awaitWriteFinish: {
       stabilityThreshold: DEFAULT_STABILITY_THRESHOLD_MS,
-      pollInterval: DEFAULT_POLL_INTERVAL_MS
-    }
+      pollInterval: DEFAULT_POLL_INTERVAL_MS,
+    },
   });
 
   const ingest = (filePath: string, reason: WatchReason): void => {
@@ -414,26 +440,26 @@ export async function watchJsonlSessionFiles<T extends NormalizedEvent>(
       activeWindowMs: options.activeWindowMs,
       parseRecord: options.parseRecord,
       onRecord: ctx.onEvent,
-      onError: ctx.onError
+      onError: ctx.onError,
     });
   };
 
-  watcher.on("add", (filePath) => {
-    ingest(filePath, "add");
+  watcher.on('add', filePath => {
+    ingest(filePath, 'add');
   });
 
-  watcher.on("change", (filePath) => {
-    ingest(filePath, "change");
+  watcher.on('change', filePath => {
+    ingest(filePath, 'change');
   });
 
-  watcher.on("error", (error) => {
+  watcher.on('error', error => {
     ctx.onError(error as Error);
   });
 
   return {
     close: async () => {
       await watcher.close();
-    }
+    },
   };
 }
 
@@ -455,19 +481,19 @@ export async function watchJsonSessionFiles<T extends NormalizedEvent>(
     ignoreInitial: false,
     depth: options.depth ?? DEFAULT_WATCH_DEPTH,
     ignored: options.ignored ?? [
-      /(^|[\/\\])\.git([\/\\]|$)/,
-      /(^|[\/\\])node_modules([\/\\]|$)/,
-      /(^|[\/\\])\.next([\/\\]|$)/,
-      /(^|[\/\\])dist([\/\\]|$)/,
-      /(^|[\/\\])\.cache([\/\\]|$)/,
-      /(^|[\/\\])\.DS_Store([\/\\]|$)/,
-      /(^|[\/\\])\.venv([\/\\]|$)/,
-      /(^|[\/\\])__pycache__([\/\\]|$)/
+      /(^|[/\\])\.git([/\\]|$)/,
+      /(^|[/\\])node_modules([/\\]|$)/,
+      /(^|[/\\])\.next([/\\]|$)/,
+      /(^|[/\\])dist([/\\]|$)/,
+      /(^|[/\\])\.cache([/\\]|$)/,
+      /(^|[/\\])\.DS_Store([/\\]|$)/,
+      /(^|[/\\])\.venv([/\\]|$)/,
+      /(^|[/\\])__pycache__([/\\]|$)/,
     ],
     awaitWriteFinish: {
       stabilityThreshold: DEFAULT_STABILITY_THRESHOLD_MS,
-      pollInterval: DEFAULT_POLL_INTERVAL_MS
-    }
+      pollInterval: DEFAULT_POLL_INTERVAL_MS,
+    },
   });
 
   const ingest = (filePath: string, reason: WatchReason): void => {
@@ -480,26 +506,26 @@ export async function watchJsonSessionFiles<T extends NormalizedEvent>(
       activeWindowMs: options.activeWindowMs,
       parseRecord: options.parseRecord,
       onRecord: ctx.onEvent,
-      onError: ctx.onError
+      onError: ctx.onError,
     });
   };
 
-  watcher.on("add", (filePath) => {
-    ingest(filePath, "add");
+  watcher.on('add', filePath => {
+    ingest(filePath, 'add');
   });
 
-  watcher.on("change", (filePath) => {
-    ingest(filePath, "change");
+  watcher.on('change', filePath => {
+    ingest(filePath, 'change');
   });
 
-  watcher.on("error", (error) => {
+  watcher.on('error', error => {
     ctx.onError(error as Error);
   });
 
   return {
     close: async () => {
       await watcher.close();
-    }
+    },
   };
 }
 
@@ -508,7 +534,10 @@ export interface CollectFilesOptions {
   maxFiles: number;
 }
 
-export async function collectJsonlFiles(root: string, options: CollectFilesOptions): Promise<string[]> {
+export async function collectJsonlFiles(
+  root: string,
+  options: CollectFilesOptions
+): Promise<string[]> {
   const results: string[] = [];
 
   async function walk(current: string, depth: number): Promise<void> {
@@ -518,7 +547,7 @@ export async function collectJsonlFiles(root: string, options: CollectFilesOptio
 
     let entries;
     try {
-      entries = await fs.readdir(current, { withFileTypes: true, encoding: "utf8" });
+      entries = await fs.readdir(current, { withFileTypes: true, encoding: 'utf8' });
     } catch {
       return;
     }
@@ -528,7 +557,7 @@ export async function collectJsonlFiles(root: string, options: CollectFilesOptio
         return;
       }
       const fullPath = path.join(current, entry.name);
-      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+      if (entry.isFile() && entry.name.endsWith('.jsonl')) {
         results.push(fullPath);
         continue;
       }
@@ -570,7 +599,7 @@ export async function watchJsonlSessionFilesByPolling<T extends NormalizedEvent>
     try {
       const files = await collectJsonlFiles(root.path, {
         maxDepth: options.maxDepth,
-        maxFiles: options.maxFiles
+        maxFiles: options.maxFiles,
       });
       const live = new Set(files);
 
@@ -604,15 +633,15 @@ export async function watchJsonlSessionFilesByPolling<T extends NormalizedEvent>
         }
 
         await ingestJsonlFile(filePath, ingestState, {
-          reason: "change",
+          reason: 'change',
           stat: {
             size: stat.size,
             mtime: stat.mtime,
-            mtimeMs: stat.mtimeMs
+            mtimeMs: stat.mtimeMs,
           },
           parseRecord: options.parseRecord,
           onRecord: ctx.onEvent,
-          onError: ctx.onError
+          onError: ctx.onError,
         });
         mtimes.set(filePath, stat.mtimeMs);
       }
@@ -640,6 +669,6 @@ export async function watchJsonlSessionFilesByPolling<T extends NormalizedEvent>
     close: async () => {
       closed = true;
       clearInterval(timer);
-    }
+    },
   };
 }

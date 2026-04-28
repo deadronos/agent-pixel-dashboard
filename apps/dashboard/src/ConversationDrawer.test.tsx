@@ -191,4 +191,41 @@ describe('AgentFaceCard', () => {
     expect(markup).toContain('face-card selected');
     expect(markup).toContain('Selected summary');
   });
+
+  it('renders nested child tool runs inside the face card', () => {
+    const markup = renderToStaticMarkup(
+      createElement(AgentFaceCard, {
+        entity: {
+          entityId: 'codex:session:abc',
+          source: 'codex',
+          sourceHost: 'workstation',
+          displayName: 'Codex',
+          entityKind: 'session',
+          currentStatus: 'active',
+          lastEventAt: '2026-04-10T10:00:00.000Z',
+          activityScore: 0.8,
+        },
+        childEntities: [
+          {
+            entityId: 'codex:tool-run:abc:shell',
+            parentEntityId: 'codex:session:abc',
+            source: 'codex',
+            sourceHost: 'workstation',
+            displayName: 'Shell',
+            entityKind: 'tool-run',
+            currentStatus: 'active',
+            lastEventAt: '2026-04-10T10:00:05.000Z',
+            lastSummary: 'Running Shell...',
+            activityScore: 0.9,
+          },
+        ],
+        groupCount: 1,
+        theme,
+        visualRules,
+      })
+    );
+
+    expect(markup).toContain('tool-run-indicator active');
+    expect(markup).toContain('Shell');
+  });
 });

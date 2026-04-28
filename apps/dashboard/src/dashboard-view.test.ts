@@ -10,6 +10,7 @@ import {
   getFilterOptions,
   getGridColumns,
   findVisibleEntityGroupById,
+  getChildEntities,
   getEntityStatusSummary,
   getVisibleEntityGroups,
   getVisibleEntities,
@@ -142,6 +143,74 @@ describe('getVisibleEntities', () => {
 });
 
 describe('getVisibleEntityGroups', () => {
+  it('keeps tool-run entities out of the top-level card grid', () => {
+    const result = getVisibleEntityGroups(
+      [
+        {
+          entityId: 'codex:session:abc',
+          sessionId: 'abc',
+          source: 'codex',
+          entityKind: 'session',
+          currentStatus: 'idle',
+          lastEventAt: '2026-04-10T10:00:00.000Z',
+          activityScore: 0.5,
+        },
+        {
+          entityId: 'codex:tool-run:abc:grep',
+          parentEntityId: 'codex:session:abc',
+          sessionId: 'abc',
+          source: 'codex',
+          entityKind: 'tool-run',
+          currentStatus: 'active',
+          lastEventAt: '2026-04-10T10:05:00.000Z',
+          activityScore: 0.9,
+        },
+      ],
+      recentSettings
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].representative.entityId).toBe('codex:session:abc');
+    expect(result[0].memberCount).toBe(1);
+  });
+
+  it('maps fresh child tool runs to their parent entities', () => {
+    const children = getChildEntities(
+      [
+        {
+          entityId: 'codex:session:abc',
+          source: 'codex',
+          entityKind: 'session',
+          currentStatus: 'active',
+          lastEventAt: '2026-04-10T10:05:00.000Z',
+          activityScore: 0.8,
+        },
+        {
+          entityId: 'codex:tool-run:abc:grep',
+          parentEntityId: 'codex:session:abc',
+          source: 'codex',
+          entityKind: 'tool-run',
+          currentStatus: 'active',
+          lastEventAt: '2026-04-10T10:05:10.000Z',
+          activityScore: 0.9,
+        },
+        {
+          entityId: 'codex:tool-run:abc:old',
+          parentEntityId: 'codex:session:abc',
+          source: 'codex',
+          entityKind: 'tool-run',
+          currentStatus: 'done',
+          lastEventAt: '2026-04-10T10:04:20.000Z',
+          activityScore: 0.3,
+        },
+      ],
+      ['codex:session:abc'],
+      new Date('2026-04-10T10:05:20.000Z')
+    );
+
+    expect(children.map(child => child.entityId)).toEqual(['codex:tool-run:abc:grep']);
+  });
+
   it('collapses multiple events from the same session into one card', () => {
     const result = getVisibleEntityGroups(
       [
@@ -176,8 +245,26 @@ describe('getVisibleEntityGroups', () => {
     );
 
     expect(result.map(group => group.groupId)).toEqual(['codex|session-a', 'claude|session-b']);
-    expect(result[0].memberCount).toBe(2);
+    expect(result[0].memberCount).toBe(1);
     expect(result[0].representative.entityId).toBe('turn-1');
+    expect(
+      getChildEntities(
+        [
+          {
+            entityId: 'tool-1',
+            sessionId: 'session-a',
+            parentEntityId: 'turn-1',
+            source: 'codex',
+            entityKind: 'tool-run',
+            currentStatus: 'active',
+            lastEventAt: '2026-04-10T10:00:00.000Z',
+            activityScore: 0.4,
+          },
+        ],
+        result[0].members.map(member => member.entityId),
+        new Date('2026-04-10T10:00:05.000Z')
+      ).map(child => child.entityId)
+    ).toEqual(['tool-1']);
   });
 
   it('collapses related entities that share a source group key', () => {

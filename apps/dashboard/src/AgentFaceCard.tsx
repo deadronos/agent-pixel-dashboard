@@ -173,6 +173,7 @@ function drawPixelFace(
 
 export function AgentFaceCard({
   entity,
+  childEntities = [],
   groupCount,
   theme,
   visualRules,
@@ -181,6 +182,7 @@ export function AgentFaceCard({
   onClick,
 }: {
   entity: DashboardEntity;
+  childEntities?: DashboardEntity[];
   groupCount: number;
   theme: ThemePreset;
   visualRules: VisualRule[];
@@ -216,6 +218,7 @@ export function AgentFaceCard({
   const currentStatus = entity.currentStatus;
   const shouldAnimate =
     visualProfile.animationMode === 'full' && visualProfile.artStyleMode !== 'minimal';
+  const now = Date.now();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -271,6 +274,38 @@ export function AgentFaceCard({
       <div className="face-card__canvas-wrap">
         <canvas ref={canvasRef} className="face-card__canvas" />
       </div>
+      {childEntities.length > 0 ? (
+        <div className="face-card__tool-runs" aria-label="Nested tool runs">
+          {childEntities.map(child => {
+            const childAgeMs = now - new Date(child.lastEventAt).getTime();
+            const terminal = child.currentStatus === 'done' || child.currentStatus === 'error';
+            const fading = terminal && childAgeMs > 15_000;
+            const stateLabel =
+              child.currentStatus === 'active'
+                ? 'RUN'
+                : child.currentStatus === 'done'
+                  ? 'OK'
+                  : child.currentStatus === 'error'
+                    ? 'ERR'
+                    : getStatusLabel(child.currentStatus).toUpperCase();
+
+            return (
+              <div
+                key={child.entityId}
+                className={`tool-run-indicator ${child.currentStatus}${fading ? ' tool-run-indicator--fade' : ''}`}
+              >
+                <span className="tool-run-indicator__state" aria-hidden="true">
+                  {stateLabel}
+                </span>
+                <span className="tool-run-indicator__name">{child.displayName}</span>
+                {child.currentStatus === 'active' ? (
+                  <span className="tool-run-indicator__pulse" />
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
       <div className="face-card__meta face-card__meta--bottom">
         <span className="face-card__summary">{entity.lastSummary ?? 'No summary yet'}</span>
         <span className="face-card__source">
