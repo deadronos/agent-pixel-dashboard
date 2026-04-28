@@ -11,7 +11,10 @@
       "@agent-watch/plugin-codex-watch": ["plugins/plugin-codex-watch/src/index.ts"],
       "@agent-watch/plugin-claude-watch": ["plugins/plugin-claude-watch/src/index.ts"],
       "@agent-watch/plugin-gemini-watch": ["plugins/plugin-gemini-watch/src/index.ts"],
+      "@agent-watch/plugin-hermes-watch": ["plugins/plugin-hermes-watch/src/index.ts"],
       "@agent-watch/plugin-openclaw-watch": ["plugins/plugin-openclaw-watch/src/index.ts"],
+      "@agent-watch/plugin-opencode-watch": ["plugins/plugin-opencode-watch/src/index.ts"],
+      "@agent-watch/plugin-pi-watch": ["plugins/plugin-pi-watch/src/index.ts"],
       "@agent-watch/plugin-copilot-watch": ["plugins/plugin-copilot-watch/src/index.ts"]
     },
     "strict": true,
