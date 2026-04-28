@@ -13,7 +13,7 @@ import {
 } from "@agent-watch/plugin-sdk";
 
 const SOURCE: SessionSource = "pi";
-const DEFAULT_PATHS = ["~/.pi/agent/sessions", "~/.pi"];
+const DEFAULT_PATHS = ["~/.pi/agent/sessions"];
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -109,6 +109,7 @@ export class PiWatchPlugin implements CollectorPlugin {
     return watchJsonlSessionFiles(root, ctx, {
       matchFile: MATCH_SESSION_FILE,
       activeWindowMs,
+      depth: 3,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
         parsePiRecord(root.host, filePath, record, sequence, fallbackTimestamp)
     });

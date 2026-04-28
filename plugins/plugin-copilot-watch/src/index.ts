@@ -17,7 +17,7 @@ import {
   type SessionSource
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.copilot/session-state", "~/.copilot"];
+const DEFAULT_PATHS = ["~/.copilot/session-state"];
 const DEFAULT_SCAN_INTERVAL_MS = 2000;
 const DEFAULT_MAX_DEPTH = 2;
 const DEFAULT_MAX_FILES = 5000;

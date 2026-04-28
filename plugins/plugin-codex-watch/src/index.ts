@@ -19,7 +19,7 @@ import {
   type SessionSource
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.codex/sessions", "~/.codex"];
+const DEFAULT_PATHS = ["~/.codex/sessions"];
 const SOURCE: SessionSource = "codex";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
@@ -112,6 +112,7 @@ export class CodexWatchPlugin implements CollectorPlugin {
     return watchJsonlSessionFiles(root, ctx, {
       matchFile: MATCH_SESSION_FILE,
       activeWindowMs,
+      depth: 2,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
         parseCodexRecord(root.host, filePath, record, sequence, fallbackTimestamp)
     });

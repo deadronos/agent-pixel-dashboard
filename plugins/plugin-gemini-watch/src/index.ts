@@ -20,7 +20,7 @@ import {
   type SessionSource
 } from "@agent-watch/plugin-sdk";
 
-const DEFAULT_PATHS = ["~/.gemini/tmp", "~/.gemini"];
+const DEFAULT_PATHS = ["~/.gemini/tmp"];
 const SOURCE: SessionSource = "gemini";
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
@@ -100,15 +100,18 @@ export class GeminiWatchPlugin implements CollectorPlugin {
 
   async watch(root: DiscoveredSessionRoot, ctx: WatchContext): Promise<WatchHandle> {
     const activeWindowMs = Number(process.env.GEMINI_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
+    const depth = 3;
     const jsonHandle = await watchJsonSessionFiles(root, ctx, {
-      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.json'),
+      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith(".json"),
       activeWindowMs,
+      depth,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
         parseGeminiSessionFile(root.host, filePath, record, sequence, fallbackTimestamp)
     });
     const jsonlHandle = await watchJsonlSessionFiles(root, ctx, {
-      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith('.jsonl'),
+      matchFile: (filePath: string) => MATCH_SESSION_FILE(filePath) && filePath.endsWith(".jsonl"),
       activeWindowMs,
+      depth,
       parseRecord: (filePath, record, sequence, fallbackTimestamp) =>
         parseGeminiSessionFile(root.host, filePath, record, sequence, fallbackTimestamp)
     });
