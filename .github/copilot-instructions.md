@@ -10,7 +10,7 @@
   - Use the workspace package name and pass a test file path after `--`.
   - The same pattern works for `@agent-watch/hub`, `@agent-watch/collector`, `@agent-watch/event-schema`, and `@agent-watch/plugin-sdk`.
 - Run locally:
-  - Hub: `npm run dev:hub`
+  - Hub: `HUB_AUTH_TOKEN=dev-secret npm run dev:hub`
   - Collector: `HUB_AUTH_TOKEN=dev-secret npm run dev:collector`
   - Dashboard: `npm run dev:dashboard`
 
@@ -21,6 +21,7 @@
   - `apps/hub`: accepts authenticated event batches, dedupes by `eventId`, projects entity state, and broadcasts updates over WebSocket.
   - `apps/dashboard`: consumes hub state and live events, then renders the visual entity cards and settings UI.
 - Shared packages:
+  - `packages/env-loader` loads repo-root `.env` / `.env.local` for hub and collector.
   - `packages/event-schema` is the canonical runtime schema for normalized events.
   - `packages/plugin-sdk` defines collector/plugin contracts and session-file matching helpers.
 - Source-specific adapters live under `plugins/plugin-<source>-watch`; they discover roots, tail source files, and emit normalized events into the shared schema.

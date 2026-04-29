@@ -11,9 +11,13 @@ A split, watcher-first multi-agent visualization system:
 This project is intended to support tools like:
 
 - Codex CLI
+- Claude CLI
 - GitHub Copilot CLI
 - OpenClaw
 - Gemini CLI
+- OpenCode
+- Hermes
+- Pi coding agent
 - future local or remote agent runtimes
 
 The key design choice is:
@@ -380,6 +384,8 @@ MVP recommendation:
 - `POST /api/events/batch`
 - `GET /api/state`
 - `GET /api/events/recent`
+- `GET /api/entity-detail`
+- `GET /api/search/sessions?q=<query>&limit=<n>`
 - `GET /ws`
 - `GET /health`
 
@@ -828,22 +834,23 @@ Each fixture should include:
 
 ```env
 COLLECTOR_ID=workstation-main
-HUB_URL=http://localhost:47831
-HUB_TOKEN=change-me
-PLUGIN_ENABLE_OPENCLAW=true
-PLUGIN_ENABLE_COPILOT=true
-PLUGIN_ENABLE_CODEX=true
-PLUGIN_ENABLE_GEMINI=false
-STATE_DIR=./data/collector-state
+COLLECTOR_HOST=workstation-main
+HUB_URL=http://localhost:3030
+HUB_AUTH_TOKEN=change-me
+WATCH_SOURCES=auto
+PLUGINS_DIR=plugins
+SESSION_ROOTS=/home/user/.codex,/home/user/.copilot/session-state
 ```
 
 ### Hub env example
 
 ```env
-PORT=47831
-HUB_TOKEN=change-me
-EVENT_RETENTION_COUNT=10000
-STATE_DIR=./data/hub
+HUB_PORT=3030
+HUB_AUTH_TOKEN=change-me
+HUB_RATE_LIMIT_WINDOW_MS=60000
+HUB_RATE_LIMIT_MAX=60
+HUB_CORS_ORIGINS=http://localhost:5173
+CASS_BIN=cass
 ```
 
 ### Explicit roots example
@@ -892,6 +899,7 @@ Architecture:
 - apps/collector: local source-host collector that watches session/transcript folders
 - apps/hub: central API receiver and state projection service
 - apps/dashboard: React dashboard that visualizes entities from hub events
+- packages/env-loader: repo-root .env/.env.local loader for hub and collector
 - packages/event-schema: shared types and validators
 - packages/plugin-sdk: collector plugin interfaces and helpers
 - plugins/plugin-openclaw-watch

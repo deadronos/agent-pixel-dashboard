@@ -1,17 +1,27 @@
-import crypto from "node:crypto";
+import crypto from 'node:crypto';
 
-import { z } from "zod";
+import { z } from 'zod';
 
-export const EntityKindSchema = z.enum(["session", "subagent", "tool-run"]);
-export const entityStatusValues = ["active", "idle", "sleepy", "dormant", "done", "error"] as const;
+export const EntityKindSchema = z.enum(['session', 'subagent', 'tool-run']);
+export const entityStatusValues = ['active', 'idle', 'sleepy', 'dormant', 'done', 'error'] as const;
 export const EntityStatusSchema = z.enum(entityStatusValues);
 export type EntityStatus = z.infer<typeof EntityStatusSchema>;
+
+export const ToolRunMetaSchema = z.object({
+  toolName: z.string(),
+  inputs: z.record(z.unknown()).optional(),
+  output: z.string().optional(),
+  exitCode: z.number().optional(),
+  durationMs: z.number().optional(),
+});
+
+export type ToolRunMeta = z.infer<typeof ToolRunMetaSchema>;
 
 export const LIVE_STATUS_WINDOWS_MS = {
   active: 10_000,
   idle: 30_000,
   sleepy: 90_000,
-  dormant: 300_000
+  dormant: 300_000,
 } as const;
 
 export const NormalizedEventSchema = z.object({
@@ -31,7 +41,7 @@ export const NormalizedEventSchema = z.object({
   activityScore: z.number().min(0).max(1).optional(),
   turnId: z.string().min(1).optional(),
   sequence: z.number().int().nonnegative().optional(),
-  meta: z.record(z.unknown()).optional()
+  meta: z.record(z.unknown()).optional(),
 });
 
 export type NormalizedEvent = z.infer<typeof NormalizedEventSchema>;
@@ -49,27 +59,27 @@ export const DashboardEntitySchema = z.object({
   sessionId: z.string().min(1).optional(),
   parentEntityId: z.string().nullable().optional(),
   groupKey: z.string().min(1).optional(),
-  recentEvents: z.array(z.string().min(1)).optional()
+  recentEvents: z.array(z.string().min(1)).optional(),
 });
 
 export type DashboardEntity = z.infer<typeof DashboardEntitySchema>;
 
 export const HubStateResponseSchema = z.object({
-  entities: z.array(DashboardEntitySchema).default([])
+  entities: z.array(DashboardEntitySchema).default([]),
 });
 
 export type HubStateResponse = z.infer<typeof HubStateResponseSchema>;
 
 export const HubHelloMessageSchema = z.object({
-  type: z.literal("hello"),
-  entities: z.number().int().nonnegative()
+  type: z.literal('hello'),
+  entities: z.number().int().nonnegative(),
 });
 
 export type HubHelloMessage = z.infer<typeof HubHelloMessageSchema>;
 
 export const HubEventsMessageSchema = z.object({
-  type: z.literal("events"),
-  events: z.array(NormalizedEventSchema)
+  type: z.literal('events'),
+  events: z.array(NormalizedEventSchema),
 });
 
 export type HubEventsMessage = z.infer<typeof HubEventsMessageSchema>;
@@ -80,7 +90,7 @@ export type HubMessage = z.infer<typeof HubMessageSchema>;
 
 export const IngestBatchBodySchema = z.object({
   collectorId: z.string().min(1).optional(),
-  events: z.array(z.unknown())
+  events: z.array(z.unknown()),
 });
 export interface IngestBatchBody {
   collectorId?: string;
@@ -90,7 +100,7 @@ export interface IngestBatchBody {
 export const ConversationDetailLookupSchema = z.object({
   source: z.string().min(1),
   sessionId: z.string().min(1).optional(),
-  entityId: z.string().min(1).optional()
+  entityId: z.string().min(1).optional(),
 });
 
 export type ConversationDetailLookup = z.infer<typeof ConversationDetailLookupSchema>;
@@ -98,17 +108,17 @@ export type ConversationDetailLookup = z.infer<typeof ConversationDetailLookupSc
 export const ConversationDetailGroupSchema = z.object({
   source: z.string().min(1),
   sessionId: z.string().min(1).optional(),
-  entityId: z.string().min(1).optional()
+  entityId: z.string().min(1).optional(),
 });
 
 export const ConversationDetailPayloadSchema = z.object({
   groupId: z.string().min(1),
   group: ConversationDetailGroupSchema,
-  matchedBy: z.enum(["session", "entity"]),
+  matchedBy: z.enum(['session', 'entity']),
   current: DashboardEntitySchema,
   representative: DashboardEntitySchema,
   members: z.array(DashboardEntitySchema),
-  recentEvents: z.array(NormalizedEventSchema)
+  recentEvents: z.array(NormalizedEventSchema),
 });
 
 export type ConversationDetailPayload = z.infer<typeof ConversationDetailPayloadSchema>;
@@ -141,23 +151,23 @@ export function makeDeterministicEventId(input: {
   sequence?: number;
   detail?: string;
 }): string {
-  const key = `${input.source}|${input.entityId}|${input.timestamp}|${input.eventType}|${input.sequence ?? ""}|${input.detail ?? ""}`;
-  const digest = crypto.createHash("sha256").update(key).digest("hex").slice(0, 16);
+  const key = `${input.source}|${input.entityId}|${input.timestamp}|${input.eventType}|${input.sequence ?? ''}|${input.detail ?? ''}`;
+  const digest = crypto.createHash('sha256').update(key).digest('hex').slice(0, 16);
   return `evt_${digest}`;
 }
 
 export function getStatusFromTimestamp(timestamp: string, now = new Date()): EntityStatus {
   const ageMs = now.getTime() - new Date(timestamp).getTime();
   if (ageMs <= LIVE_STATUS_WINDOWS_MS.active) {
-    return "active";
+    return 'active';
   }
   if (ageMs <= LIVE_STATUS_WINDOWS_MS.idle) {
-    return "idle";
+    return 'idle';
   }
   if (ageMs <= LIVE_STATUS_WINDOWS_MS.sleepy) {
-    return "sleepy";
+    return 'sleepy';
   }
-  return "dormant";
+  return 'dormant';
 }
 
 export function resolveEntityStatus(
@@ -166,13 +176,13 @@ export function resolveEntityStatus(
   now = new Date(),
   activityScore = 0.5
 ): EntityStatus {
-  if (currentStatus === "done" || currentStatus === "error") {
+  if (currentStatus === 'done' || currentStatus === 'error') {
     return currentStatus;
   }
 
   const ageMs = now.getTime() - new Date(lastEventAt).getTime();
   if (activityScore >= 0.8 && ageMs <= LIVE_STATUS_WINDOWS_MS.idle) {
-    return "active";
+    return 'active';
   }
 
   return getStatusFromTimestamp(lastEventAt, now);
@@ -189,13 +199,13 @@ function clampActivityScore(value: number | undefined): number {
 }
 
 function getProjectedStatus(event: NormalizedEvent): EntityStatus {
-  if (event.eventType === "error") {
-    return "error";
+  if (event.eventType === 'error') {
+    return 'error';
   }
-  if (event.eventType === "session_finished" || event.eventType === "session_archived") {
-    return "done";
+  if (event.eventType === 'session_finished' || event.eventType === 'session_archived') {
+    return 'done';
   }
-  return event.status ?? "active";
+  return event.status ?? 'active';
 }
 
 export function projectEntityEvent(
@@ -205,7 +215,8 @@ export function projectEntityEvent(
 ): DashboardEntity {
   const maxRecentEvents = options.maxRecentEvents ?? DEFAULT_MAX_RECENT_EVENTS;
   const recentEvents = [...(previous?.recentEvents ?? []), event.eventId].slice(-maxRecentEvents);
-  const groupKey = typeof event.meta?.groupKey === "string" ? event.meta.groupKey : previous?.groupKey;
+  const groupKey =
+    typeof event.meta?.groupKey === 'string' ? event.meta.groupKey : previous?.groupKey;
 
   return {
     entityId: event.entityId,
@@ -220,13 +231,21 @@ export function projectEntityEvent(
     lastEventAt: event.timestamp,
     lastSummary: event.summary ?? previous?.lastSummary,
     activityScore: clampActivityScore(event.activityScore ?? previous?.activityScore),
-    recentEvents
+    recentEvents,
   };
 }
 
-export function normalizeDashboardEntity(entity: DashboardEntity, now = new Date()): DashboardEntity {
+export function normalizeDashboardEntity(
+  entity: DashboardEntity,
+  now = new Date()
+): DashboardEntity {
   return {
     ...entity,
-    currentStatus: resolveEntityStatus(entity.currentStatus, entity.lastEventAt, now, entity.activityScore)
+    currentStatus: resolveEntityStatus(
+      entity.currentStatus,
+      entity.lastEventAt,
+      now,
+      entity.activityScore
+    ),
   };
 }

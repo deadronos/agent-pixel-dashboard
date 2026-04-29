@@ -3,7 +3,7 @@
 Watcher-first multi-agent observability stack from `idea.md`:
 
 - `apps/collector`: watches local transcript/session files and emits normalized events
-- `apps/hub`: receives event batches, projects entity state, streams updates over WebSocket
+- `apps/hub`: receives event batches, projects entity state, serves state/detail/search APIs, and streams updates over WebSocket
 - `apps/dashboard`: renders live entity tiles with activity-state decay
 - `plugins/plugin-codex-watch`: codex-oriented JSONL watcher plugin
 - `plugins/plugin-claude-watch`: claude session/transcript watcher plugin
@@ -13,19 +13,22 @@ Watcher-first multi-agent observability stack from `idea.md`:
 - `plugins/plugin-opencode-watch`: OpenCode watcher plugin, preferring live SQLite state with JSON fallback
 - `plugins/plugin-hermes-watch`: Hermes agent session/transcript watcher plugin
 - `plugins/plugin-pi-watch`: Pi coding agent JSONL watcher plugin
+- `packages/env-loader`: loads repo-root `.env` / `.env.local` for hub and collector
+- `packages/event-schema`: canonical runtime schema for normalized events
+- `packages/plugin-sdk`: collector/plugin contracts and session-file matching helpers
 - optional CASS-backed session search at `GET /api/search/sessions`
 
 ## Quick start
 
 ```bash
 npm install
-npm run dev:hub
+HUB_AUTH_TOKEN=dev-secret npm run dev:hub
 ```
 
 In another shell:
 
 ```bash
-HUB_AUTH_TOKEN=<your-token> npm run dev:collector
+HUB_AUTH_TOKEN=dev-secret npm run dev:collector
 ```
 
 In another shell:
@@ -57,6 +60,8 @@ to the dashboard origin(s). The dashboard derives its websocket URL from `VITE_H
 - `HUB_PORT` (default: `3030`)
 - `HUB_AUTH_TOKEN` (required; must match the collector token)
 - `CASS_BIN` (default: `cass`)
+- `HUB_RATE_LIMIT_WINDOW_MS` (default: `60000`, rate-limit window for `POST /api/events/batch`)
+- `HUB_RATE_LIMIT_MAX` (default: `60`, max batches allowed per window)
 - `HUB_CORS_ORIGINS` (optional comma-separated allowlist of dashboard origins; blank is
   permissive during development and rejects cross-origin requests in `NODE_ENV=production`)
 

@@ -1,27 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 
-import { AgentFaceCard } from "./AgentFaceCard.js";
-import { ConversationDrawer } from "./ConversationDrawer.js";
-import { DashboardTopbar } from "./DashboardTopbar.js";
-import { SettingsPanel } from "./SettingsPanel.js";
-import { toggleSelectedGroupId } from "./conversation-selection.js";
-import { dashboardConfig } from "./dashboard-config.js";
-import { createResolvedSettings, type ViewerPreferences } from "./dashboard-settings.js";
+import { AgentFaceCard } from './AgentFaceCard.js';
+import { ConversationDrawer } from './ConversationDrawer.js';
+import { DashboardTopbar } from './DashboardTopbar.js';
+import { SettingsPanel } from './SettingsPanel.js';
+import { toggleSelectedGroupId } from './conversation-selection.js';
+import { dashboardConfig } from './dashboard-config.js';
+import { createResolvedSettings, type ViewerPreferences } from './dashboard-settings.js';
 import {
   getEmptyStateMessage,
   getEntityStatusSummary,
   getFilterOptions,
   getGridColumns,
+  getChildEntities,
   getVisibleEntityGroups,
   findVisibleEntityGroupById,
-  pruneViewerPreferencesToLiveOptions
-} from "./dashboard-view.js";
-import { resolveHubWebSocketUrl } from "./hub-url.js";
-import { useConversationDetail } from "./use-conversation-detail.js";
-import { useLiveEntities } from "./use-live-entities.js";
-import { loadViewerPreferences, saveViewerPreferences } from "./viewer-preferences.js";
+  pruneViewerPreferencesToLiveOptions,
+} from './dashboard-view.js';
+import { resolveHubWebSocketUrl } from './hub-url.js';
+import { useConversationDetail } from './use-conversation-detail.js';
+import { useLiveEntities } from './use-live-entities.js';
+import { loadViewerPreferences, saveViewerPreferences } from './viewer-preferences.js';
 
-const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? "http://localhost:3030";
+const HUB_HTTP = import.meta.env.VITE_HUB_HTTP ?? 'http://localhost:3030';
 const HUB_WS = resolveHubWebSocketUrl(import.meta.env.VITE_HUB_WS, HUB_HTTP);
 
 export function App() {
@@ -41,10 +42,13 @@ export function App() {
     () => createResolvedSettings(dashboardConfig, activeViewerPreferences),
     [activeViewerPreferences]
   );
-  const darkThemeId = dashboardConfig.themes.presets.find((theme) => theme.id === "night-shift")?.id;
+  const darkThemeId = dashboardConfig.themes.presets.find(theme => theme.id === 'night-shift')?.id;
   const lightThemeId = dashboardConfig.themes.defaultThemeId;
   const darkMode = settings.theme.id === darkThemeId;
-  const visibleGroups = useMemo(() => getVisibleEntityGroups(entities, settings), [entities, settings]);
+  const visibleGroups = useMemo(
+    () => getVisibleEntityGroups(entities, settings),
+    [entities, settings]
+  );
   const selectedVisibleGroup = useMemo(
     () => findVisibleEntityGroupById(visibleGroups, selectedGroupId),
     [selectedGroupId, visibleGroups]
@@ -61,14 +65,14 @@ export function App() {
       --muted-text-color: ${settings.theme.mutedTextColor};
     }
   `;
-  const { detail: selectedDetail, loading: detailLoading, error: detailError } = useConversationDetail(
-    HUB_HTTP,
-    selectedVisibleGroup,
-    selectedGroupId
-  );
+  const {
+    detail: selectedDetail,
+    loading: detailLoading,
+    error: detailError,
+  } = useConversationDetail(HUB_HTTP, selectedVisibleGroup, selectedGroupId);
 
   const clearViewerFilterPreferences = () => {
-    setViewerPreferences((previous) => {
+    setViewerPreferences(previous => {
       const next = { ...previous };
       delete next.hideDormant;
       delete next.hideDone;
@@ -81,14 +85,14 @@ export function App() {
   const emptyStateTips =
     entities.length === 0
       ? [
-          "Keep the collector and hub running together so the mural can populate.",
-          "Use the settings sidebar to tune density, sort order, and theme.",
-          "Watch the top summary as soon as live events start flowing.",
+          'Keep the collector and hub running together so the mural can populate.',
+          'Use the settings sidebar to tune density, sort order, and theme.',
+          'Watch the top summary as soon as live events start flowing.',
         ]
       : [
-          "Clear the current filters to bring dormant conversations back.",
-          "Widen the source and entity-kind filters if they are too narrow.",
-          "Try recent sorting to surface the freshest activity first.",
+          'Clear the current filters to bring dormant conversations back.',
+          'Widen the source and entity-kind filters if they are too narrow.',
+          'Try recent sorting to surface the freshest activity first.',
         ];
 
   useEffect(() => {
@@ -101,14 +105,14 @@ export function App() {
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         setSelectedGroupId(null);
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [selectedGroupId]);
 
@@ -123,7 +127,7 @@ export function App() {
       <style>{themeStyles}</style>
       <main className="dashboard">
         <div
-          className={`dashboard__shell ${showSettingsPanel ? "dashboard__shell--with-settings" : "dashboard__shell--solo"}`}
+          className={`dashboard__shell ${showSettingsPanel ? 'dashboard__shell--with-settings' : 'dashboard__shell--solo'}`}
         >
           <DashboardTopbar
             connectionState={connectionState}
@@ -132,12 +136,12 @@ export function App() {
             settingsPanelOpen={showSettingsPanel}
             darkMode={darkMode}
             onToggleDarkMode={() => {
-              setViewerPreferences((previous) => ({
+              setViewerPreferences(previous => ({
                 ...previous,
-                themeId: darkMode ? lightThemeId : darkThemeId ?? lightThemeId
+                themeId: darkMode ? lightThemeId : (darkThemeId ?? lightThemeId),
               }));
             }}
-            onToggleSettings={() => setSettingsPanelOpen((current) => !current)}
+            onToggleSettings={() => setSettingsPanelOpen(current => !current)}
           />
 
           {showSettingsPanel ? (
@@ -147,39 +151,43 @@ export function App() {
               sourceOptions={filterOptions.sources}
               entityKindOptions={filterOptions.entityKinds}
               viewerPreferences={activeViewerPreferences}
-              onChange={(patch) => setViewerPreferences((previous) => ({ ...previous, ...patch }))}
+              onChange={patch => setViewerPreferences(previous => ({ ...previous, ...patch }))}
               onReset={() => setViewerPreferences({})}
             />
           ) : null}
 
           <section className={`grid grid--cols-${columns}`}>
-            {visibleGroups.map((group) => (
+            {visibleGroups.map(group => (
               <AgentFaceCard
                 key={group.groupId}
                 entity={group.representative}
+                childEntities={getChildEntities(
+                  entities,
+                  group.members.map(member => member.entityId)
+                )}
                 groupCount={group.memberCount}
                 theme={settings.theme}
                 visualRules={settings.visualRules}
                 artStyleMode={settings.artStyleMode}
                 selected={selectedVisibleGroupId === group.groupId}
                 onClick={() => {
-                  setSelectedGroupId((current) => toggleSelectedGroupId(current, group.groupId));
+                  setSelectedGroupId(current => toggleSelectedGroupId(current, group.groupId));
                 }}
               />
             ))}
             {visibleGroups.length === 0 ? (
               <section
-                className={`empty-state ${entities.length > 0 ? "empty-state--filtered" : "empty-state--fresh"}`}
-                aria-label={entities.length > 0 ? "Filtered empty state" : "Getting started"}
+                className={`empty-state ${entities.length > 0 ? 'empty-state--filtered' : 'empty-state--fresh'}`}
+                aria-label={entities.length > 0 ? 'Filtered empty state' : 'Getting started'}
               >
                 <div className="empty-state__copy">
                   <p className="eyebrow">
-                    {entities.length > 0 ? "Filtered view" : "Getting started"}
+                    {entities.length > 0 ? 'Filtered view' : 'Getting started'}
                   </p>
                   <h2>
                     {entities.length > 0
-                      ? "Nothing matches the current filters"
-                      : "Waiting for the first collector event"}
+                      ? 'Nothing matches the current filters'
+                      : 'Waiting for the first collector event'}
                   </h2>
                   <p>{emptyMessage}</p>
                 </div>
@@ -206,7 +214,7 @@ export function App() {
                 </div>
 
                 <ul className="empty-state__tips">
-                  {emptyStateTips.map((tip) => (
+                  {emptyStateTips.map(tip => (
                     <li key={tip}>{tip}</li>
                   ))}
                 </ul>
