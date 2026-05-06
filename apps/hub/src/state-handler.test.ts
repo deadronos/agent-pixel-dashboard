@@ -34,7 +34,7 @@ describe("createStateHandler", () => {
     handler(req, res as any, () => undefined);
 
     expect(res.body).toEqual({ entities: [{ id: "1", status: "idle" }] });
-    expect(getState).toHaveBeenCalledWith(false, expect.any(Date));
+    expect(getState).toHaveBeenCalledWith(false, expect.any(Date), undefined, 0);
   });
 
   it("returns all entities including dormant when includeDormant=1", () => {
@@ -47,7 +47,7 @@ describe("createStateHandler", () => {
     handler(req, res as any, () => undefined);
 
     expect(res.body).toEqual({ entities: [{ id: "1", status: "idle" }, { id: "2", status: "dormant" }] });
-    expect(getState).toHaveBeenCalledWith(true, expect.any(Date));
+    expect(getState).toHaveBeenCalledWith(true, expect.any(Date), undefined, 0);
   });
 
   it("returns empty entities array from empty store", () => {
@@ -60,7 +60,7 @@ describe("createStateHandler", () => {
     handler(req, res as any, () => undefined);
 
     expect(res.body).toEqual({ entities: [] });
-    expect(getState).toHaveBeenCalledWith(false, expect.any(Date));
+    expect(getState).toHaveBeenCalledWith(false, expect.any(Date), undefined, 0);
   });
 
   it("calls store.getState with correct includeDormant and now args", () => {
@@ -78,5 +78,43 @@ describe("createStateHandler", () => {
     expect(call[0]).toBe(true); // includeDormant
     expect(call[1].getTime()).toBeGreaterThanOrEqual(before.getTime());
     expect(call[1].getTime()).toBeLessThanOrEqual(after.getTime()); // now is approximately "now"
+    expect(call[2]).toBeUndefined(); // limit
+    expect(call[3]).toBe(0); // offset
+  });
+
+  it("passes limit and offset to getState", () => {
+    const getState = vi.fn().mockReturnValue({ entities: [] });
+    const store = { getState } as unknown as HubStore;
+    const handler = createStateHandler(store);
+    const req = { query: { limit: "10", offset: "20" } } as any;
+    const res = createMockRes();
+
+    handler(req, res as any, () => undefined);
+
+    expect(getState).toHaveBeenCalledWith(false, expect.any(Date), 10, 20);
+  });
+
+  it("treats empty-string params as no pagination", () => {
+    const getState = vi.fn().mockReturnValue({ entities: [] });
+    const store = { getState } as unknown as HubStore;
+    const handler = createStateHandler(store);
+    const req = { query: { limit: "", offset: "" } } as any;
+    const res = createMockRes();
+
+    handler(req, res as any, () => undefined);
+
+    expect(getState).toHaveBeenCalledWith(false, expect.any(Date), undefined, 0);
+  });
+
+  it("treats missing limit as no pagination limit", () => {
+    const getState = vi.fn().mockReturnValue({ entities: [] });
+    const store = { getState } as unknown as HubStore;
+    const handler = createStateHandler(store);
+    const req = { query: { offset: "5" } } as any;
+    const res = createMockRes();
+
+    handler(req, res as any, () => undefined);
+
+    expect(getState).toHaveBeenCalledWith(false, expect.any(Date), undefined, 5);
   });
 });
