@@ -49,8 +49,42 @@ describe("HubStore", () => {
       events: [sampleEvent({ timestamp: "2026-04-09T20:10:00.000Z" })]
     });
 
-    expect(store.getState(false, new Date("2026-04-09T20:20:00.000Z")).entities).toEqual([]);
-    expect(store.getState(true, new Date("2026-04-09T20:20:00.000Z")).entities).toHaveLength(1);
+    // Entity is dormant at 20:20 (10 min later), so filtered result is empty
+    const result = store.getState(false, new Date("2026-04-09T20:20:00.000Z"));
+    expect(result.entities).toEqual([]);
+    expect(result.total).toBe(0); // filtered count (dormant excluded)
+    expect(result.offset).toBe(0);
+    expect(result.limit).toBe(0);
+
+    // With includeDormant=true, entity is included
+    const allResult = store.getState(true, new Date("2026-04-09T20:20:00.000Z"));
+    expect(allResult.entities).toHaveLength(1);
+    expect(allResult.total).toBe(1);
+    expect(allResult.offset).toBe(0);
+    expect(allResult.limit).toBe(1);
+  });
+
+  it("supports pagination with limit and offset", () => {
+    const store = new HubStore();
+    store.ingestBatch({
+      events: [
+        sampleEvent({ entityId: "e1", eventId: "evt_1", timestamp: "2026-04-09T20:15:00.000Z" }),
+        sampleEvent({ entityId: "e2", eventId: "evt_2", timestamp: "2026-04-09T20:16:00.000Z" }),
+        sampleEvent({ entityId: "e3", eventId: "evt_3", timestamp: "2026-04-09T20:17:00.000Z" }),
+      ]
+    });
+
+    const result = store.getState(true, new Date("2026-04-09T20:20:00.000Z"), 2, 0);
+    expect(result.entities).toHaveLength(2);
+    expect(result.total).toBe(3);
+    expect(result.offset).toBe(0);
+    expect(result.limit).toBe(2);
+
+    const page2 = store.getState(true, new Date("2026-04-09T20:20:00.000Z"), 2, 2);
+    expect(page2.entities).toHaveLength(1);
+    expect(page2.total).toBe(3);
+    expect(page2.offset).toBe(2);
+    expect(page2.limit).toBe(2);
   });
 
   it("expires done entities after the retention window", () => {

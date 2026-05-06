@@ -29,7 +29,7 @@ export class HubStore {
   }
 
   getEntityMap(): Map<string, EntityState> {
-    return this.entities;
+    return new Map(this.entities);
   }
 
   getRecentEventsSnapshot(): NormalizedEvent[] {
@@ -62,17 +62,23 @@ export class HubStore {
     expireEntities(this.entities, now);
   }
 
-  getState(includeDormant: boolean, now = new Date()): HubStateResponse {
-    const state = [...this.entities.values()].map((entity) => normalizeDashboardEntity(entity, now));
+  getState(includeDormant: boolean, now = new Date(), limit?: number, offset = 0): HubStateResponse {
+    let state = [...this.entities.values()].map((entity) => normalizeDashboardEntity(entity, now));
+    if (!includeDormant) {
+      state = state.filter(
+        (entity) =>
+          entity.currentStatus === "active" ||
+          entity.currentStatus === "idle" ||
+          entity.currentStatus === "sleepy"
+      );
+    }
+    const total = state.length;
+    const paginated = limit !== undefined ? state.slice(offset, offset + limit) : state;
     return {
-      entities: includeDormant
-        ? state
-        : state.filter(
-            (entity) =>
-              entity.currentStatus === "active" ||
-              entity.currentStatus === "idle" ||
-              entity.currentStatus === "sleepy"
-          )
+      entities: paginated,
+      total,
+      offset,
+      limit: limit ?? total
     };
   }
 }
