@@ -66,6 +66,9 @@ export type DashboardEntity = z.infer<typeof DashboardEntitySchema>;
 
 export const HubStateResponseSchema = z.object({
   entities: z.array(DashboardEntitySchema).default([]),
+  total: z.number().int().nonnegative().optional(),
+  offset: z.number().int().nonnegative().optional(),
+  limit: z.number().int().nonnegative().optional(),
 });
 
 export type HubStateResponse = z.infer<typeof HubStateResponseSchema>;

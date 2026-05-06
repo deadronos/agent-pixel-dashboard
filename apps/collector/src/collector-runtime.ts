@@ -53,6 +53,7 @@ export class CollectorRuntime {
     try {
       await this.hubClient.postBodies(bodies);
     } catch (error) {
+      this.flushing = false;
       this.queue.unshift(...payload);
       throw error;
     } finally {
