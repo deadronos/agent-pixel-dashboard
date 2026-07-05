@@ -1,0 +1,19 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/env-loader" },
+    { "path": "./packages/event-schema" },
+    { "path": "./packages/plugin-sdk" },
+    { "path": "./apps/hub" },
+    { "path": "./apps/collector" },
+    { "path": "./apps/dashboard" },
+    { "path": "./plugins/plugin-claude-watch" },
+    { "path": "./plugins/plugin-codex-watch" },
+    { "path": "./plugins/plugin-copilot-watch" },
+    { "path": "./plugins/plugin-gemini-watch" },
+    { "path": "./plugins/plugin-hermes-watch" },
+    { "path": "./plugins/plugin-openclaw-watch" },
+    { "path": "./plugins/plugin-opencode-watch" },
+    { "path": "./plugins/plugin-pi-watch" }
+  ]
+}
