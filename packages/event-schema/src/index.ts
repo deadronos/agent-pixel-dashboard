@@ -9,7 +9,7 @@ export type EntityStatus = z.infer<typeof EntityStatusSchema>;
 
 export const ToolRunMetaSchema = z.object({
   toolName: z.string(),
-  inputs: z.record(z.unknown()).optional(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
   output: z.string().optional(),
   exitCode: z.number().optional(),
   durationMs: z.number().optional(),
@@ -41,7 +41,7 @@ export const NormalizedEventSchema = z.object({
   activityScore: z.number().min(0).max(1).optional(),
   turnId: z.string().min(1).optional(),
   sequence: z.number().int().nonnegative().optional(),
-  meta: z.record(z.unknown()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type NormalizedEvent = z.infer<typeof NormalizedEventSchema>;

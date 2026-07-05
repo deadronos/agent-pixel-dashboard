@@ -1,7 +1,7 @@
 import eslint from '@eslint/js';
 import tseslintPlugin from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 import globals from 'globals';
 
 const typescriptRecommended = {
@@ -25,10 +25,11 @@ export default [
       '**/coverage/**',
       '**/*.d.ts',
       '**/*.map',
-      '**/src/*.js',
+      '**/src/**/*.js',
       '.env',
       '.env.local',
       '.env.example',
+      '**/*.config.ts',
     ],
   },
   eslint.configs.recommended,
