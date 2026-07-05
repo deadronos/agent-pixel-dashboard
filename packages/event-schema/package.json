@@ -5,11 +5,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -b",
     "test": "vitest run",
-    "lint": "tsc -p tsconfig.json --noEmit"
+    "lint": "tsc -b --noEmit"
   },
   "dependencies": {
-    "zod": "^3.24.4"
+    "zod": "^4.4.3"
   }
 }

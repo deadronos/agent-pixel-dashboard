@@ -1,4 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*.ts", "vitest.config.ts"]
+  "compilerOptions": {
+    "rootDir": "src",
+    "tsBuildInfoFile": "./tsconfig.tsbuildinfo",
+    "outDir": "./dist"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../event-schema"
+    }
+  ]
 }

@@ -2,13 +2,14 @@
   "name": "agent-watch",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "apps/*",
     "packages/*",
     "plugins/*"
   ],
   "scripts": {
-    "build": "npm run --workspaces build",
+    "build": "tsc -b",
     "test": "npm run --workspaces test",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -18,14 +19,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^22.15.3",
-    "eslint": "^9.39.4",
+    "@types/node": "^26.1.0",
+    "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-import": "^2.32.0",
-    "globals": "^17.4.0",
-    "prettier": "^3.8.2",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.58.1",
-    "vitest": "^3.1.1"
+    "eslint-plugin-import-x": "^4.17.1",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1",
+    "vitest": "^4.1.9"
   }
 }
