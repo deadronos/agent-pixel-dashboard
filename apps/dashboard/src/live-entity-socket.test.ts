@@ -184,4 +184,69 @@ describe("createLiveEntitySocket", () => {
 
     connector.stop();
   });
+
+  it("tears down the prior socket when start() is called twice", () => {
+    const states: string[] = [];
+    const connector = createLiveEntitySocket({
+      url: "ws://localhost:3030/ws",
+      createSocket: buildCreateSocket(),
+      onStateChange: (state) => states.push(state),
+      onMessage: () => undefined,
+      initialBackoffMs: 100,
+      maxBackoffMs: 1_000
+    });
+
+    connector.start();
+    MockWebSocket.instances[0].open();
+    expect(MockWebSocket.instances).toHaveLength(1);
+    expect(states).toEqual(["connecting", "live"]);
+
+    // A second start() must close the prior socket before opening a new one,
+    // and must not surface an offline transition from the prior close.
+    connector.start();
+    expect(MockWebSocket.instances).toHaveLength(2);
+
+    // The new socket is the only live one — close events from it should
+    // produce offline transitions, but the first socket's close event was
+    // swallowed during teardown so no extra offline state was emitted.
+    MockWebSocket.instances[1].open();
+    expect(states).toEqual(["connecting", "live", "connecting", "live"]);
+
+    // Closing the leaked first socket would emit a spurious offline event if
+    // its listener were still attached — verify it is gone.
+    MockWebSocket.instances[0].close();
+    expect(states).toEqual(["connecting", "live", "connecting", "live"]);
+
+    MockWebSocket.instances[1].close();
+    expect(states).toEqual([
+      "connecting",
+      "live",
+      "connecting",
+      "live",
+      "offline"
+    ]);
+
+    connector.stop();
+  });
+
+  it("schedules a reconnect when the WebSocket fires error without a matching close event", () => {
+    const states: string[] = [];
+    const connector = createLiveEntitySocket({
+      url: "ws://localhost:3030/ws",
+      createSocket: buildCreateSocket(),
+      onStateChange: (state) => states.push(state),
+      onMessage: () => undefined,
+      initialBackoffMs: 100,
+      maxBackoffMs: 1_000
+    });
+
+    connector.start();
+    MockWebSocket.instances[0].error();
+    // No close event — error alone must still drive the offline / reconnect path.
+    vi.advanceTimersByTime(100);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(states).toEqual(["connecting", "offline", "connecting"]);
+
+    connector.stop();
+  });
 });

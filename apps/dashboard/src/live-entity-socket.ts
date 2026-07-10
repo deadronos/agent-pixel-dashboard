@@ -1,21 +1,22 @@
 import type { ConnectionState } from "./use-live-entities.js";
 
-// eslint-disable-next-line no-unused-vars
-export type LiveEntitySocketStateListener = (state: ConnectionState) => void;
-// eslint-disable-next-line no-unused-vars
-export type LiveEntitySocketMessageListener = (data: string) => void;
-// eslint-disable-next-line no-unused-vars
-export type LiveEntitySocketFactory = (url: string) => WebSocket;
-
+// The callback parameter names on this interface are part of the public
+// documentation (callers rely on them for clarity) even though the interface
+// has no body to consume them. ESLint's base `no-unused-vars` rule fires
+// regardless of `argsIgnorePattern`, since that option only applies to
+// concrete function implementations.
 export interface LiveEntitySocketOptions {
   url: string;
-  onStateChange: LiveEntitySocketStateListener;
-  onMessage: LiveEntitySocketMessageListener;
+  // eslint-disable-next-line no-unused-vars
+  onStateChange: (state: ConnectionState) => void;
+  // eslint-disable-next-line no-unused-vars
+  onMessage: (data: string) => void;
   /**
    * Allows tests to inject a stub WebSocket constructor; production code
    * uses the global `WebSocket`.
    */
-  createSocket?: LiveEntitySocketFactory;
+  // eslint-disable-next-line no-unused-vars
+  createSocket?: (url: string) => WebSocket;
   initialBackoffMs?: number;
   maxBackoffMs?: number;
 }
@@ -36,7 +37,12 @@ export function createLiveEntitySocket(options: LiveEntitySocketOptions): LiveEn
   let socket: WebSocket | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let backoffMs = initialBackoffMs;
+  let offlineEmitted = false;
+  // `stopped` is the user-facing on/off switch; `generation` invalidates
+  // listeners attached to a previous socket so a late close/error from a
+  // torn-down socket cannot leak into the new run.
   let stopped = true;
+  let generation = 0;
 
   function clearReconnectTimer(): void {
     if (reconnectTimer !== null) {
@@ -49,18 +55,32 @@ export function createLiveEntitySocket(options: LiveEntitySocketOptions): LiveEn
     if (stopped) {
       return;
     }
-    const delay = backoffMs;
+    clearReconnectTimer();
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       backoffMs = Math.min(backoffMs * 2, maxBackoffMs);
       connect();
-    }, delay);
+    }, backoffMs);
+  }
+
+  function teardown(): void {
+    clearReconnectTimer();
+    // Bump the generation so any in-flight listeners from the prior socket
+    // become no-ops even if `close()` fires synchronously after the next
+    // `connect()` call has already started.
+    generation++;
+    if (socket) {
+      socket.close();
+      socket = null;
+    }
   }
 
   function connect(): void {
     if (stopped) {
       return;
     }
+    generation++;
+    const myGeneration = generation;
     options.onStateChange("connecting");
 
     try {
@@ -73,21 +93,43 @@ export function createLiveEntitySocket(options: LiveEntitySocketOptions): LiveEn
     }
 
     socket.addEventListener("open", () => {
+      if (myGeneration !== generation) {
+        return;
+      }
       backoffMs = initialBackoffMs;
+      offlineEmitted = false;
       options.onStateChange("live");
     });
     socket.addEventListener("close", () => {
-      if (stopped) {
+      if (myGeneration !== generation || stopped) {
         return;
       }
-      options.onStateChange("offline");
+      if (!offlineEmitted) {
+        options.onStateChange("offline");
+        offlineEmitted = true;
+      }
       scheduleReconnect();
     });
     socket.addEventListener("error", () => {
-      // Treat errors as transient; the subsequent close event will trigger
-      // the reconnect schedule.
+      if (myGeneration !== generation || stopped) {
+        return;
+      }
+      // Per the WHATWG spec, `close` always follows `error`. Some older
+      // browsers and embedded WebViews have shipped edge cases where
+      // `error` fires without a matching `close`, which would otherwise
+      // leave the dashboard stuck on "connecting". Emit offline and queue
+      // a reconnect defensively; if `close` also fires it will replace the
+      // pending timer and `offlineEmitted` dedups the state transition.
+      if (!offlineEmitted) {
+        options.onStateChange("offline");
+        offlineEmitted = true;
+      }
+      scheduleReconnect();
     });
     socket.addEventListener("message", (event) => {
+      if (myGeneration !== generation) {
+        return;
+      }
       const data = (event as MessageEvent).data;
       if (typeof data !== "string") {
         return;
@@ -98,21 +140,16 @@ export function createLiveEntitySocket(options: LiveEntitySocketOptions): LiveEn
 
   return {
     start(): void {
+      // Re-starting must drop any prior socket/reconnect state so callers can
+      // safely invoke start() again (e.g. to retry after an explicit stop).
+      teardown();
       stopped = false;
       backoffMs = initialBackoffMs;
       connect();
     },
     stop(): void {
       stopped = true;
-      clearReconnectTimer();
-      if (socket) {
-        try {
-          socket.close();
-        } catch {
-          // Closing a half-open socket can throw; swallow it during teardown.
-        }
-        socket = null;
-      }
+      teardown();
     }
   };
 }
