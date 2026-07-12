@@ -109,12 +109,17 @@ export function saveViewerPreferences(preferences: ViewerPreferences): void {
     return;
   }
 
-  if (Object.keys(preferences).length === 0) {
-    storage.removeItem(STORAGE_KEY);
-    return;
-  }
+  try {
+    if (Object.keys(preferences).length === 0) {
+      storage.removeItem(STORAGE_KEY);
+      return;
+    }
 
-  storage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    storage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+  } catch {
+    // Writes can fail on quota exhaustion or storage-restricted environments;
+    // surface a no-op rather than letting the caller's effect crash.
+  }
 }
 
 export function resetViewerPreferences(): void {
@@ -123,5 +128,9 @@ export function resetViewerPreferences(): void {
     return;
   }
 
-  storage.removeItem(STORAGE_KEY);
+  try {
+    storage.removeItem(STORAGE_KEY);
+  } catch {
+    // Same as saveViewerPreferences — removeItem can throw in restricted modes.
+  }
 }
