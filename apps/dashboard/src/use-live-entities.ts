@@ -8,6 +8,8 @@ import {
 } from "@agent-watch/event-schema";
 import { useCallback, useEffect, useState } from "react";
 
+import { createLiveEntitySocket, type LiveEntitySocket } from "./live-entity-socket.js";
+
 export type ConnectionState = "connecting" | "live" | "offline";
 
 const MAX_RECENT_EVENTS = 25;
@@ -64,32 +66,26 @@ export function useLiveEntities(hubHttp: string, hubWs: string): {
   }, [connectionState, fetchState]);
 
   useEffect(() => {
-    let socket: WebSocket;
-    try {
-      socket = new WebSocket(hubWs);
-    } catch {
-      setConnectionState("offline");
-      return;
-    }
+    const socket: LiveEntitySocket = createLiveEntitySocket({
+      url: hubWs,
+      onStateChange: setConnectionState,
+      onMessage: (data) => {
+        try {
+          const payload = parseHubMessage(JSON.parse(data));
+          if (payload.type !== "events") {
+            return;
+          }
 
-    socket.addEventListener("open", () => setConnectionState("live"));
-    socket.addEventListener("close", () => setConnectionState("offline"));
-    socket.addEventListener("error", () => setConnectionState("offline"));
-    socket.addEventListener("message", (event) => {
-      try {
-        const payload = parseHubMessage(JSON.parse(event.data as string));
-        if (payload.type !== "events") {
-          return;
+          setEntities((previous) => applyIncomingEvents(previous, payload.events));
+        } catch {
+          // Ignore malformed websocket messages to keep the dashboard live.
         }
-
-        setEntities((previous) => applyIncomingEvents(previous, payload.events));
-      } catch {
-        // Ignore malformed websocket messages to keep the dashboard live.
       }
     });
+    socket.start();
 
     return () => {
-      socket.close();
+      socket.stop();
     };
   }, [hubWs]);
 

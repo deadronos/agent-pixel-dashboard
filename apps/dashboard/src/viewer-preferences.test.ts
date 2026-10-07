@@ -109,6 +109,70 @@ describe("viewer preferences", () => {
       spy.mockRestore();
     }
   });
+
+  it("survives setItem throwing (e.g. quota exceeded) without surfacing the error", () => {
+    const throwingStorage: Storage = {
+      get length() {
+        return 0;
+      },
+      clear() {
+        // noop
+      },
+      getItem() {
+        return null;
+      },
+      key() {
+        return null;
+      },
+      removeItem() {
+        // works for any prior test cleanup
+      },
+      setItem() {
+        throw new DOMException("Quota exceeded", "QuotaExceededError");
+      }
+    };
+
+    Object.defineProperty(globalThis, "localStorage", {
+      value: throwingStorage,
+      configurable: true
+    });
+
+    expect(() => saveViewerPreferences({ maxAgentsShown: 4 })).not.toThrow();
+    // The empty-preferences clear path also calls removeItem, which still
+    // works here — the test only forces setItem to throw.
+  });
+
+  it("survives removeItem throwing without surfacing the error", () => {
+    const throwingStorage: Storage = {
+      get length() {
+        return 0;
+      },
+      clear() {
+        // noop
+      },
+      getItem() {
+        return null;
+      },
+      key() {
+        return null;
+      },
+      removeItem() {
+        throw new DOMException("Storage access denied", "SecurityError");
+      },
+      setItem() {
+        // works for prior test setup
+      }
+    };
+
+    Object.defineProperty(globalThis, "localStorage", {
+      value: throwingStorage,
+      configurable: true
+    });
+
+    expect(() => resetViewerPreferences()).not.toThrow();
+    // saveViewerPreferences with no keys also goes through removeItem.
+    expect(() => saveViewerPreferences({})).not.toThrow();
+  });
 });
 
 describe("SettingsPanel", () => {

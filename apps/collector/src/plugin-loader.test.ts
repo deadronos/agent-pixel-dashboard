@@ -68,6 +68,13 @@ describe("resolveRequestedSources", () => {
     expect(resolveRequestedSources(["gemini", "codex"], discovered)).toEqual(["gemini", "codex"]);
     expect(resolveRequestedSources(["gemini", "unknown", "codex"], discovered)).toEqual(["gemini", "codex"]);
   });
+
+  it("deduplicates repeated sources while preserving first-seen order", () => {
+    const discovered = ["codex", "claude", "gemini"];
+    expect(resolveRequestedSources(["codex", "codex"], discovered)).toEqual(["codex"]);
+    expect(resolveRequestedSources(["codex", "claude", "codex", "claude"], discovered)).toEqual(["codex", "claude"]);
+    expect(resolveRequestedSources(["claude", "codex", "codex"], discovered)).toEqual(["claude", "codex"]);
+  });
 });
 
 describe("resolvePluginDir", () => {

@@ -24,7 +24,18 @@ export function resolveRequestedSources(requestedSources: string[], discoveredSo
   if (normalized.length === 0 || normalized.includes("auto") || normalized.includes("all")) {
     return [...discoveredSources];
   }
-  return normalized.filter((source) => discoveredSources.includes(source));
+  // Preserve first-seen order while dropping repeats so a config like
+  // `WATCH_SOURCES=codex,codex` does not double-load the same collector plugin.
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+  for (const source of normalized) {
+    if (seen.has(source)) {
+      continue;
+    }
+    seen.add(source);
+    deduped.push(source);
+  }
+  return deduped.filter((source) => discoveredSources.includes(source));
 }
 
 async function readPluginRegistration(pluginDir: string, dirName: string): Promise<CollectorPluginRegistration | null> {
