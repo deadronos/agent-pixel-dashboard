@@ -10,7 +10,7 @@ Watcher-first multi-agent observability stack from `idea.md`:
 - `plugins/plugin-gemini-watch`: gemini-cli session/transcript watcher plugin
 - `plugins/plugin-openclaw-watch`: openclaw session/transcript watcher plugin
 - `plugins/plugin-copilot-watch`: copilot-cli session/transcript watcher plugin
-- `plugins/plugin-opencode-watch`: OpenCode watcher plugin, preferring live SQLite state with JSON fallback
+- `plugins/plugin-opencode-watch`: OpenCode watcher plugin, preferring live SQLite state (`session` + `session_v2` via built-in `node:sqlite`, Node >= 22.13) with legacy JSON fallback
 - `plugins/plugin-hermes-watch`: Hermes agent session/transcript watcher plugin
 - `plugins/plugin-pi-watch`: Pi coding agent JSONL watcher plugin
 - `packages/env-loader`: loads repo-root `.env` / `.env.local` for hub and collector
