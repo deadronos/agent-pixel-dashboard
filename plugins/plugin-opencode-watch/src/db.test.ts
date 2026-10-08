@@ -50,4 +50,20 @@ describe("readActiveSessions", () => {
 
     expect(readActiveSessions(db, 500).map(row => row.id)).toEqual(["ses_legacy"]);
   });
+
+  it("throws when the session table exists but message and part tables are missing", () => {
+    const db = createFixtureDatabase({ tables: ["session"], auxTables: false });
+    insertFixtureSession(db, "session", { id: "ses_broken", time_updated: 1000 });
+
+    expect(() => readActiveSessions(db, 500)).toThrow(/no such table: message/i);
+  });
+
+  it("reads session tables without a model column and still resolves message metadata", () => {
+    const db = createFixtureDatabase({ modelColumn: false });
+    insertFixtureSession(db, "session_v2", { id: "ses_no_model", time_updated: 1000 });
+    insertFixtureMessage(db, "ses_no_model", { role: "assistant", modelID: "kimi-k2.6", providerID: "moonshotai" }, 1000);
+
+    const row = readActiveSessions(db, 500).find(candidate => candidate.id === "ses_no_model");
+    expect(row).toMatchObject({ model: null, modelID: "kimi-k2.6", providerID: "moonshotai" });
+  });
 });

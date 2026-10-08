@@ -9,6 +9,7 @@ import { openOpenCodeDatabase, readActiveSessions, type OpenCodeDatabase } from 
 import { parseOpenCodeDbEvent, parseOpenCodeSessionFile, SOURCE } from "./parse.js";
 
 const DEFAULT_DATA_DIR = "~/.local/share/opencode";
+const DEFAULT_ACTIVE_WINDOW_MS = 2 * 60 * 1000;
 const DEFAULT_SCAN_INTERVAL_MS = 2000;
 const MATCH_SESSION_FILE = (filePath: string): boolean => matchesSessionFile(SOURCE, filePath);
 
@@ -73,7 +74,8 @@ export function createOpenCodeErrorReporter(onError: WatchContext["onError"]): O
 }
 
 function resolveActiveWindowMs(): number {
-  return Number(process.env.OPENCODE_ACTIVE_WINDOW_MS ?? 2 * 60 * 1000);
+  const activeWindowMs = Number(process.env.OPENCODE_ACTIVE_WINDOW_MS ?? DEFAULT_ACTIVE_WINDOW_MS);
+  return Number.isFinite(activeWindowMs) ? activeWindowMs : DEFAULT_ACTIVE_WINDOW_MS;
 }
 
 function resolveScanIntervalMs(): number {
@@ -100,6 +102,11 @@ async function watchOpenCodeDb(root: DiscoveredSessionRoot, ctx: WatchContext, d
         reporter.report(error);
         return;
       }
+      if (closed) {
+        database.close();
+        database = null;
+        return;
+      }
     }
     try {
       scanOpenCodeSessions(database, state, ctx, { activeWindowMs });
@@ -113,7 +120,7 @@ async function watchOpenCodeDb(root: DiscoveredSessionRoot, ctx: WatchContext, d
 
   await scan();
   const timer = setInterval(() => {
-    void scan();
+    void scan().catch(error => reporter.report(error));
   }, scanIntervalMs);
 
   return {

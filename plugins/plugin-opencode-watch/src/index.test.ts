@@ -2,12 +2,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import type { NormalizedEvent } from "@agent-watch/event-schema";
 import { afterEach, describe, expect, it } from "vitest";
 
-import type { NormalizedEvent } from "@agent-watch/event-schema";
+import { createFixtureDatabase, insertFixtureSession } from "./test-utils.js";
 
 import { createOpenCodeErrorReporter, OpenCodeWatchPlugin, scanOpenCodeSessions, type OpenCodeScanState } from "./index.js";
-import { createFixtureDatabase, insertFixtureSession } from "./test-utils.js";
 
 const tempDirs: string[] = [];
 

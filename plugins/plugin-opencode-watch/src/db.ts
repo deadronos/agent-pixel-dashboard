@@ -31,8 +31,9 @@ export async function openOpenCodeDatabase(dbFile: string): Promise<OpenCodeData
   return new Database(dbFile, { readOnly: true });
 }
 
-function activeSessionsSql(table: (typeof OPEN_CODE_SESSION_TABLES)[number]): string {
-  return `SELECT s.id, s.project_id, s.parent_id, s.directory, s.title, s.time_updated, s.model,
+function activeSessionsSql(table: (typeof OPEN_CODE_SESSION_TABLES)[number], hasModelColumn: boolean): string {
+  const modelColumn = hasModelColumn ? "s.model" : "NULL AS model";
+  return `SELECT s.id, s.project_id, s.parent_id, s.directory, s.title, s.time_updated, ${modelColumn},
     (SELECT json_extract(m.data, '$.modelID') FROM message m WHERE m.session_id = s.id ORDER BY m.time_created DESC LIMIT 1) AS modelID,
     (SELECT json_extract(m.data, '$.providerID') FROM message m WHERE m.session_id = s.id ORDER BY m.time_created DESC LIMIT 1) AS providerID,
     (
@@ -87,18 +88,24 @@ export function mergeSessionRows(
   return [...merged.values()];
 }
 
-function isMissingTableError(error: unknown): boolean {
-  return error instanceof Error && /no such table/i.test(error.message);
+function isMissingTableError(error: unknown, table: (typeof OPEN_CODE_SESSION_TABLES)[number]): boolean {
+  return error instanceof Error && /no such table/i.test(error.message) && error.message.endsWith(`: ${table}`);
+}
+
+function hasColumn(db: OpenCodeDatabase, table: (typeof OPEN_CODE_SESSION_TABLES)[number], column: string): boolean {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>;
+  return columns.some(entry => entry.name === column);
 }
 
 export function readActiveSessions(db: OpenCodeDatabase, cutoffMs: number): OpenCodeDbSessionRow[] {
   const rowsByTable: OpenCodeDbSessionRow[][] = [];
   for (const table of OPEN_CODE_SESSION_TABLES) {
     try {
-      const rows = db.prepare(activeSessionsSql(table)).all(cutoffMs) as unknown as OpenCodeDbSessionRow[];
+      const sql = activeSessionsSql(table, hasColumn(db, table, "model"));
+      const rows = db.prepare(sql).all(cutoffMs) as unknown as OpenCodeDbSessionRow[];
       rowsByTable.push(rows);
     } catch (error) {
-      if (!isMissingTableError(error)) {
+      if (!isMissingTableError(error, table)) {
         throw error;
       }
     }
